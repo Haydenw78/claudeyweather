@@ -14,213 +14,121 @@
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
-  /* Night-chart palette: Admiralty chart tints, desaturated for a plotter's night mode */
-  --ink:#0A1922;
-  --ink-2:#102630;
-  --ink-3:#173441;
-  --hairline:#204250;
-  --shoal:#7FB8C4;      /* shallow-water tint, used for labels */
-  --buff:#E8DCC0;       /* chart land buff, primary text */
-  --dim:#6E8E9B;
-  --drying:#84C067;     /* drying-height green: GO */
-  --amber:#E5A03A;      /* MARGINAL */
-  --magenta:#FF3E9A;    /* chart caution magenta: NO-GO */
-  --sp:16px;
+  --ink:#0A1922; --ink-2:#102630; --ink-3:#173441; --hairline:#204250;
+  --shoal:#7FB8C4; --buff:#E8DCC0; --dim:#6E8E9B;
+  --drying:#84C067; --amber:#E5A03A; --magenta:#FF3E9A; --tide:#C79BE0;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{-webkit-text-size-adjust:100%}
-body{
-  background:var(--ink);
-  color:var(--buff);
-  font-family:'Barlow Condensed',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-  font-size:17px;
-  line-height:1.35;
+body{background:var(--ink);color:var(--buff);
+  font-family:'Barlow Condensed',-apple-system,BlinkMacSystemFont,sans-serif;
+  font-size:17px;line-height:1.35;
   padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
-  -webkit-font-smoothing:antialiased;
-}
-.wrap{max-width:640px;margin:0 auto;padding:0 var(--sp) 64px}
+  -webkit-font-smoothing:antialiased}
+.wrap{max-width:660px;margin:0 auto;padding:0 16px 64px}
 
-/* ---------- masthead ---------- */
-.masthead{padding:22px 0 14px;border-bottom:1px solid var(--hairline)}
-.eyebrow{
-  font-size:12px;letter-spacing:.22em;text-transform:uppercase;
-  color:var(--shoal);font-weight:500;
-}
-.masthead h1{
-  font-size:34px;font-weight:600;letter-spacing:-.01em;
-  text-transform:uppercase;line-height:1;margin-top:4px;
-}
-.stamp{
-  font-family:'IBM Plex Mono',ui-monospace,monospace;
-  font-size:11px;color:var(--dim);margin-top:8px;
-  display:flex;gap:10px;flex-wrap:wrap;align-items:center;
-}
+.masthead{padding:20px 0 12px;border-bottom:1px solid var(--hairline)}
+.eyebrow{font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--shoal);font-weight:500}
+.masthead h1{font-size:32px;font-weight:600;text-transform:uppercase;line-height:1;margin-top:3px}
+.stamp{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim);margin-top:7px}
 .stamp b{color:var(--shoal);font-weight:500}
 
-/* ---------- reef selector ---------- */
-.reefs{
-  display:flex;gap:6px;overflow-x:auto;padding:14px 0 4px;
-  scrollbar-width:none;-webkit-overflow-scrolling:touch;
-}
-.reefs::-webkit-scrollbar{display:none}
-.reef-btn{
-  flex:0 0 auto;background:var(--ink-2);color:var(--dim);
-  border:1px solid var(--hairline);border-radius:2px;
-  font-family:inherit;font-size:15px;font-weight:500;
-  letter-spacing:.08em;text-transform:uppercase;
-  padding:8px 13px;cursor:pointer;white-space:nowrap;
-}
-.reef-btn[aria-pressed="true"]{
-  background:var(--shoal);color:var(--ink);border-color:var(--shoal);
-}
-.reef-btn:focus-visible{outline:2px solid var(--magenta);outline-offset:2px}
-.reef-note{
-  font-family:'IBM Plex Mono',monospace;font-size:11px;
-  color:var(--dim);padding:8px 0 0;
-}
+.chips{display:flex;gap:6px;overflow-x:auto;padding:8px 0 2px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto;background:var(--ink-2);color:var(--dim);border:1px solid var(--hairline);
+  border-radius:2px;font-family:inherit;font-size:14px;font-weight:500;letter-spacing:.07em;
+  text-transform:uppercase;padding:7px 12px;cursor:pointer;white-space:nowrap}
+.chip[aria-pressed="true"]{background:var(--shoal);color:var(--ink);border-color:var(--shoal)}
+.chip[disabled]{opacity:.34;cursor:not-allowed;text-decoration:line-through}
+.chip:focus-visible{outline:2px solid var(--magenta);outline-offset:2px}
+.rowlabel{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim);
+  letter-spacing:.14em;text-transform:uppercase;padding-top:12px}
+.reef-note{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim);padding:8px 0 0}
 
-/* ---------- hero: the window ---------- */
-.window-panel{
-  margin-top:20px;padding:18px 0 20px;
-  border-top:1px solid var(--hairline);
-  border-bottom:2px solid var(--hairline);
-}
-.panel-label{
-  font-size:12px;letter-spacing:.22em;text-transform:uppercase;
-  color:var(--shoal);font-weight:500;margin-bottom:12px;
-}
-.win{padding:12px 0;border-bottom:1px dotted var(--hairline)}
+.panel{padding:18px 0;border-bottom:1px solid var(--hairline)}
+.panel-label{font-size:12px;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--shoal);font-weight:500;margin-bottom:4px}
+.sublabel{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim);
+  line-height:1.6;margin-bottom:12px}
+.panel svg{width:100%;display:block}
+.chart{touch-action:pan-y;cursor:crosshair}
+
+.readout{display:grid;grid-template-columns:repeat(2,1fr);gap:3px 14px;
+  font-family:'IBM Plex Mono',monospace;font-size:12.5px;
+  padding:12px 0 4px;border-top:1px dotted var(--hairline);margin-top:6px}
+.readout .k{color:var(--dim)}
+.readout .big{grid-column:1 / -1;font-size:16px;font-weight:500;padding-bottom:5px}
+.v0{color:var(--drying)} .v1{color:var(--amber)} .v2{color:var(--magenta)}
+
+.legend{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim);margin-top:10px;line-height:1.75}
+.sw{display:inline-block;width:13px;height:2px;vertical-align:middle;margin-right:5px}
+.attrib{font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:#48606B;margin-top:8px}
+
+.mlegend{display:flex;flex-wrap:wrap;gap:4px 14px;font-family:'IBM Plex Mono',monospace;
+  font-size:11.5px;margin-top:10px}
+.mlegend span{white-space:nowrap;color:var(--dim)}
+.mlegend b{font-weight:500}
+.mlegend .off{text-decoration:line-through;opacity:.6}
+.mnote{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim);margin-top:12px;line-height:1.75}
+.agree{font-weight:600}
+.agree.tight{color:var(--drying)} .agree.loose{color:var(--amber)} .agree.wide{color:var(--magenta)}
+
+.win{padding:11px 0;border-bottom:1px dotted var(--hairline)}
 .win:last-child{border-bottom:none}
-.win-range{
-  font-family:'IBM Plex Mono',monospace;
-  font-size:19px;font-weight:500;letter-spacing:-.02em;line-height:1.3;
-}
-.win-meta{
-  font-family:'IBM Plex Mono',monospace;font-size:12px;
-  color:var(--dim);margin-top:5px;
-}
+.win-range{font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:500;line-height:1.3}
+.win-meta{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--dim);margin-top:5px}
 .win-dur{font-weight:600}
-.win.lvl0 .win-dur{color:var(--drying)}
-.win.lvl1 .win-dur{color:var(--amber)}
-.no-window{
-  font-family:'IBM Plex Mono',monospace;font-size:14px;
-  color:var(--magenta);line-height:1.6;
-}
+.win.lvl0 .win-dur{color:var(--drying)} .win.lvl1 .win-dur{color:var(--amber)}
+.no-window{font-family:'IBM Plex Mono',monospace;font-size:14px;color:var(--magenta);line-height:1.6}
 
-/* ---------- day cards ---------- */
-.day{padding:20px 0;border-bottom:1px solid var(--hairline)}
+.day{padding:18px 0;border-bottom:1px solid var(--hairline)}
 .day-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
-.day-name{font-size:22px;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
-.day-sum{
-  font-family:'IBM Plex Mono',monospace;font-size:11px;
-  color:var(--dim);text-align:right;
-}
-
-/* SIGNATURE: the sounding ribbon */
-.ribbon{display:flex;gap:2px;margin:12px 0 4px;height:34px}
-.cell{
-  flex:1;position:relative;border-radius:1px;
-  display:flex;align-items:flex-end;justify-content:center;
-  padding-bottom:3px;
-  font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;
-}
+.day-name{font-size:21px;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.day-sum{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim);text-align:right}
+.ribbon{display:flex;gap:2px;margin:11px 0 3px;height:32px}
+.cell{flex:1;border-radius:1px;display:flex;align-items:flex-end;justify-content:center;
+  padding-bottom:3px;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500}
 .cell.lvl0{background:var(--drying);color:#0A1F0A}
 .cell.lvl1{background:var(--amber);color:#2A1A00}
 .cell.lvl2{background:var(--magenta);color:#2A0014}
 .cell.night{opacity:.34}
-.ribbon-axis{
-  display:flex;gap:2px;
-  font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--dim);
-}
-.ribbon-axis span{flex:1;text-align:center}
-
-.rows{margin-top:14px}
-.row{
-  display:grid;
-  grid-template-columns:38px 22px 1fr 1fr 12px;
-  gap:8px;align-items:center;
-  font-family:'IBM Plex Mono',monospace;font-size:13px;
-  padding:6px 0;border-top:1px dotted var(--ink-3);
-}
-.row .t{color:var(--dim);font-size:12px}
-.row .arrow{width:22px;height:22px;display:block}
-.row .arrow path{fill:var(--shoal)}
-.row .v{white-space:nowrap}
-.row .sub{color:var(--dim);font-size:11px}
+.row{display:grid;grid-template-columns:36px 20px 1fr 1fr 54px 10px;gap:6px;align-items:center;
+  font-family:'IBM Plex Mono',monospace;font-size:12.5px;padding:6px 0;border-top:1px dotted var(--ink-3)}
+.row .t{color:var(--dim);font-size:11.5px}
+.arrow{width:20px;height:20px;display:block}
+.arrow path{fill:var(--shoal)}
+.row .sub{color:var(--dim);font-size:10.5px}
+.row .cur{color:var(--tide);font-size:11px;text-align:right}
 .dot{width:9px;height:9px;border-radius:50%;justify-self:end}
-.dot.lvl0{background:var(--drying)}
-.dot.lvl1{background:var(--amber)}
-.dot.lvl2{background:var(--magenta)}
-.row.is-night .t,.row.is-night .v{opacity:.5}
+.dot.lvl0{background:var(--drying)} .dot.lvl1{background:var(--amber)} .dot.lvl2{background:var(--magenta)}
+.row.is-night{opacity:.55}
 
-/* ---------- model comparison ---------- */
-.models{padding:22px 0;border-bottom:1px solid var(--hairline)}
-.mrow{
-  display:grid;grid-template-columns:96px 1fr 62px;gap:10px;align-items:center;
-  font-family:'IBM Plex Mono',monospace;font-size:12px;padding:7px 0;
-}
-.mname{color:var(--shoal);font-size:12px}
-.mbar{height:8px;background:var(--ink-3);border-radius:1px;overflow:hidden}
-.mbar i{display:block;height:100%;background:var(--shoal)}
-.mval{text-align:right}
-.mnote{
-  font-family:'IBM Plex Mono',monospace;font-size:11px;
-  color:var(--dim);margin-top:12px;line-height:1.6;
-}
-.agree{font-weight:600}
-.agree.tight{color:var(--drying)}
-.agree.loose{color:var(--amber)}
-.agree.wide{color:var(--magenta)}
-
-/* ---------- ensemble ---------- */
-.ens{padding:22px 0;border-bottom:1px solid var(--hairline)}
-.ens svg{width:100%;height:150px;display:block}
-.ens-legend{
-  font-family:'IBM Plex Mono',monospace;font-size:11px;
-  color:var(--dim);margin-top:10px;line-height:1.6;
-}
-
-/* ---------- thresholds ---------- */
-details{padding:20px 0;border-bottom:1px solid var(--hairline)}
-summary{
-  font-size:12px;letter-spacing:.22em;text-transform:uppercase;
-  color:var(--shoal);font-weight:500;cursor:pointer;list-style:none;
-}
+details{padding:18px 0;border-bottom:1px solid var(--hairline)}
+summary{font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--shoal);
+  font-weight:500;cursor:pointer;list-style:none}
 summary::-webkit-details-marker{display:none}
 summary::after{content:' +';font-family:'IBM Plex Mono',monospace}
 details[open] summary::after{content:' −'}
-.thresh{display:grid;grid-template-columns:1fr auto;gap:10px 14px;margin-top:16px;align-items:center}
+.thresh{display:grid;grid-template-columns:1fr auto;gap:9px 14px;margin-top:15px;align-items:center}
 .thresh label{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--dim)}
-.thresh input{
-  width:74px;background:var(--ink-2);border:1px solid var(--hairline);
-  color:var(--buff);font-family:'IBM Plex Mono',monospace;font-size:14px;
-  padding:7px 9px;border-radius:2px;text-align:right;
-}
+.thresh input{width:74px;background:var(--ink-2);border:1px solid var(--hairline);color:var(--buff);
+  font-family:'IBM Plex Mono',monospace;font-size:14px;padding:7px 9px;border-radius:2px;text-align:right}
 .thresh input:focus-visible{outline:2px solid var(--shoal);outline-offset:1px}
 
-/* ---------- buttons / states ---------- */
-.btn{
-  background:transparent;border:1px solid var(--shoal);color:var(--shoal);
-  font-family:inherit;font-size:15px;font-weight:500;letter-spacing:.1em;
-  text-transform:uppercase;padding:11px 18px;border-radius:2px;cursor:pointer;
-}
+.btn{background:transparent;border:1px solid var(--shoal);color:var(--shoal);font-family:inherit;
+  font-size:15px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;
+  padding:10px 17px;border-radius:2px;cursor:pointer}
 .btn:focus-visible{outline:2px solid var(--magenta);outline-offset:2px}
-.actions{padding:24px 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.status{
-  font-family:'IBM Plex Mono',monospace;font-size:12px;
-  color:var(--dim);padding:28px 0;line-height:1.7;
-}
+.actions{padding:22px 0;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.status{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--dim);line-height:1.7}
 .status.err{color:var(--magenta)}
-.skel{
-  height:34px;background:linear-gradient(90deg,var(--ink-2),var(--ink-3),var(--ink-2));
-  background-size:200% 100%;animation:sh 1.4s linear infinite;border-radius:1px;margin:12px 0;
-}
+.skel{height:32px;background:linear-gradient(90deg,var(--ink-2),var(--ink-3),var(--ink-2));
+  background-size:200% 100%;animation:sh 1.4s linear infinite;border-radius:1px;margin:10px 0}
 @keyframes sh{to{background-position:-200% 0}}
-.foot{
-  font-family:'IBM Plex Mono',monospace;font-size:11px;
-  color:var(--dim);padding:26px 0;line-height:1.8;
-}
-@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.foot{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim);padding:24px 0;line-height:1.8}
+.foot b{color:var(--tide);font-weight:500}
+.foot b.warn{color:var(--magenta)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
 </style>
 </head>
 <body>
@@ -229,36 +137,59 @@ details[open] summary::after{content:' −'}
   <header class="masthead">
     <div class="eyebrow">Capricorn &amp; Bunker Group</div>
     <h1>Window</h1>
-    <div class="stamp" id="stamp">Loading forecast…</div>
+    <div class="stamp" id="stamp">Loading…</div>
   </header>
 
-  <nav class="reefs" id="reefs" aria-label="Choose a reef"></nav>
+  <div class="rowlabel">Model</div>
+  <nav class="chips" id="models" aria-label="Weather model"></nav>
+  <div class="rowlabel">Location</div>
+  <nav class="chips" id="reefs" aria-label="Reef"></nav>
   <div class="reef-note" id="reefNote"></div>
 
-  <section class="window-panel">
+  <section class="panel">
+    <div class="panel-label">Wind and sea</div>
+    <div class="sublabel">Shaded band is the ECMWF ensemble: one model run 51 times from slightly
+      different starting conditions. Narrow means small measurement errors do not change the outcome.</div>
+    <nav class="chips" id="spans" aria-label="Range"></nav>
+    <div id="chartBox"><div class="skel" style="height:210px"></div></div>
+    <div class="readout" id="readout"></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-label">Model agreement</div>
+    <div class="sublabel">A different question: do independent forecasting centres agree? One line per
+      model. Where they braid together you can plan on it. Where they fan apart the pattern is unresolved,
+      and a narrow ensemble above will not save you.</div>
+    <div id="modelChart"><div class="skel" style="height:150px"></div></div>
+    <div class="mlegend" id="modelLegend"></div>
+    <div class="mnote" id="modelNote"></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-label">The group, at the scrubbed hour</div>
+    <div class="rowlabel" style="padding-top:4px">Underlay</div>
+    <nav class="chips" id="basemaps" aria-label="Map underlay"></nav>
+    <div class="rowlabel">Extent</div>
+    <nav class="chips" id="extents" aria-label="Map extent"></nav>
+    <div id="mapBox" style="margin-top:10px"><div class="skel" style="height:220px"></div></div>
+    <div class="legend" id="mapLegend"></div>
+    <div class="attrib" id="mapAttrib"></div>
+  </section>
+
+  <section class="panel">
     <div class="panel-label">Best windows</div>
-    <div id="windows"><div class="skel"></div><div class="skel"></div></div>
+    <div id="windows"><div class="skel"></div></div>
   </section>
 
   <section id="days"></section>
-
-  <section class="models">
-    <div class="panel-label">Model agreement</div>
-    <div id="modelBox"><div class="skel"></div></div>
-  </section>
-
-  <section class="ens">
-    <div class="panel-label">ECMWF ensemble spread</div>
-    <div id="ensBox"><div class="skel"></div></div>
-  </section>
 
   <details>
     <summary>Your thresholds</summary>
     <div class="thresh">
       <label for="tWindGo">Wind at or under (kt) = go</label><input id="tWindGo" type="number" inputmode="decimal" value="10">
-      <label for="tSwellGo">Swell at or under (m) = go</label><input id="tSwellGo" type="number" inputmode="decimal" step="0.1" value="1.0">
+      <label for="tSwellGo">Sea at or under (m) = go</label><input id="tSwellGo" type="number" inputmode="decimal" step="0.1" value="1.0">
       <label for="tWindNo">Wind at or over (kt) = no-go</label><input id="tWindNo" type="number" inputmode="decimal" value="20">
-      <label for="tSwellNo">Swell at or over (m) = no-go</label><input id="tSwellNo" type="number" inputmode="decimal" step="0.1" value="2.0">
+      <label for="tSwellNo">Sea at or over (m) = no-go</label><input id="tSwellNo" type="number" inputmode="decimal" step="0.1" value="2.0">
       <label for="tPeriod">Long-period swell from (s)</label><input id="tPeriod" type="number" inputmode="decimal" value="11">
       <label for="tPeriodH">…and at or over (m), downgrade</label><input id="tPeriodH" type="number" inputmode="decimal" step="0.1" value="1.2">
     </div>
@@ -266,15 +197,20 @@ details[open] summary::after{content:' −'}
 
   <div class="actions">
     <button class="btn" id="refresh">Refresh</button>
-    <span class="status" id="err" style="padding:0"></span>
+    <span class="status" id="err"></span>
   </div>
 
   <div class="foot">
-    Wind and pressure from Open-Meteo. Waves from the Open-Meteo marine model.
-    Grid spacing is about 9 km, so reef-scale sheltering is not resolved — the lee side
-    will fish better than the number shown.<br><br>
-    Cross-check against the BoM Capricornia coastal waters forecast before you leave.
-    A forecaster's edits beat any raw grid.
+    <b class="warn">Not for navigation.</b> The underlay is a reference basemap, not a hydrographic
+    chart. Esri state that GEBCO bathymetry must not be used for navigation or any purpose relating to
+    safety at sea, and global resolution outside US waters only reaches about 1:577,000. Satellite
+    imagery shows reef platforms well but carries no soundings and no dates you can rely on. Use your
+    plotter and paper charts for anything you steer by.<br><br>
+    <b>On the tidal flow column.</b> Derived from how fast modelled sea level is changing, not from a
+    tidal stream atlas. Timing of the turn will be about right, speed is indicative only. The marine
+    model runs at 8 km and does not resolve the channels you actually dive.<br><br>
+    Wind grid spacing does not capture reef-scale sheltering. The lee will always fish better than the
+    number shown. Cross-check the BoM Capricornia coastal waters forecast before you leave.
   </div>
 
 </div>
@@ -282,443 +218,496 @@ details[open] summary::after{content:' −'}
 <script>
 "use strict";
 
-/* ---------------------------------------------------------------
-   Reef positions. Sykes and Lamont are from the Wikipedia gazetteer
-   and cross-check against WillyWeather's distances from Heron.
-   Broomfield's listed longitude there is clearly a typo (it puts the
-   reef inshore), so this is a corrected estimate — verify it against
-   your plotter and edit if it's off.
-----------------------------------------------------------------*/
-const REEFS = [
-  {id:'sykes',      name:'Sykes',        lat:-23.4331, lon:152.0325, note:'Eastern edge of the group. Most exposed to E and SE. Current runs hard on the springs.'},
-  {id:'lamont',     name:'Lamont',       lat:-23.6000, lon:152.0489, note:'South-east corner. Open to southerly swell wrapping up from the Tasman.'},
-  {id:'broomfield', name:'Broomfield',   lat:-23.2650, lon:151.9400, note:'North of Heron. Best lee when it is blowing SE. Position is an estimate — check it.'},
-  {id:'musgrave',   name:'Lady Musgrave',lat:-23.9063, lon:152.4006, note:'Fallback. Navigable lagoon, the forgiving overnight anchorage in the group.'},
-  {id:'heron',      name:'Heron',        lat:-23.4425, lon:151.9139, note:'Reference point. Compare against what the apps show you.'}
+const REEFS=[
+ {id:'sykes',      name:'Sykes',         short:'SYK', lat:-23.4331, lon:152.0325, cap:true,  note:'Eastern edge. Most exposed to E and SE. Current runs hard on the springs.'},
+ {id:'lamont',     name:'Lamont',        short:'LAM', lat:-23.6000, lon:152.0489, cap:true,  note:'South-east corner. Open to southerly swell wrapping up from the Tasman.'},
+ {id:'broomfield', name:'Broomfield',    short:'BRO', lat:-23.2650, lon:151.9400, cap:true,  note:'North of Heron. Best lee in a SE. Position is an estimate — check your plotter.'},
+ {id:'musgrave',   name:'Lady Musgrave', short:'LMI', lat:-23.9063, lon:152.4006, cap:false, note:'Fallback. Navigable lagoon, the forgiving overnight anchorage.'},
+ {id:'heron',      name:'Heron',         short:'HER', lat:-23.4425, lon:151.9139, cap:true,  note:'Reference. Compare against what the apps are showing you.'}
 ];
-
-const MODELS = [
-  {id:'ecmwf_ifs025',     label:'ECMWF IFS'},
-  {id:'bom_access_global',label:'BoM ACCESS'},
-  {id:'icon_seamless',    label:'ICON'},
-  {id:'gfs_seamless',     label:'GFS'}
+const MODELS=[
+ {id:'ecmwf_ifs025',      label:'ECMWF', col:'#E8DCC0'},
+ {id:'gfs_seamless',      label:'GFS',   col:'#FF7A9E'},
+ {id:'icon_seamless',     label:'ICON',  col:'#7FB8C4'},
+ {id:'gem_seamless',      label:'GEM',   col:'#C79BE0'},
+ {id:'bom_access_global', label:'BoM',   col:'#9FD48A'}
 ];
+const SPANS=[{id:'3',label:'3 day'},{id:'5',label:'5 day'},{id:'10',label:'10 day'}];
+const BASEMAPS=[
+ {id:'imagery', label:'Satellite'},
+ {id:'ocean',   label:'Bathymetry'},
+ {id:'none',    label:'None'}
+];
+const EXTENTS=[{id:'capricorn',label:'Capricorn'},{id:'group',label:'Whole group'}];
+const TILES={
+ imagery:'https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/',
+ ocean:'https://services.arcgisonline.com/arcgis/rest/services/Ocean/World_Ocean_Base/MapServer/tile/'
+};
+const TZ='Australia/Brisbane', DAYS=10;
+const DIRS=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
 
-const TZ = 'Australia/Brisbane';
-const DAYS = 10;
-const DIRS = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+const store=(()=>{let m={};return{
+ get(k){try{return localStorage.getItem(k)}catch(e){return m[k]??null}},
+ set(k,v){try{localStorage.setItem(k,v)}catch(e){m[k]=v}}};})();
 
-/* small storage shim — degrades quietly if the browser blocks it */
-const store = (()=>{
-  let mem = {};
-  return {
-    get(k){ try{ return localStorage.getItem(k); }catch(e){ return mem[k] ?? null; } },
-    set(k,v){ try{ localStorage.setItem(k,v); }catch(e){ mem[k]=v; } }
-  };
-})();
-
-let state = {
-  reef: store.get('reef') || 'sykes',
-  data: null,
-  thresholds: loadThresholds()
+let state={
+ reef:store.get('reef')||'sykes',
+ model:store.get('model')||'ecmwf_ifs025',
+ span:parseInt(store.get('span')||'5',10),
+ basemap:store.get('basemap')||'imagery',
+ extent:store.get('extent')||'capricorn',
+ cursor:0, thresholds:loadT(), data:null, modelStatus:{}, series:null, allSeries:{}
 };
 
-function loadThresholds(){
-  const d = {windGo:10, swellGo:1.0, windNo:20, swellNo:2.0, period:11, periodH:1.2};
-  try{
-    const raw = store.get('thresholds');
-    return raw ? Object.assign(d, JSON.parse(raw)) : d;
-  }catch(e){ return d; }
+function loadT(){
+ const d={windGo:10,swellGo:1.0,windNo:20,swellNo:2.0,period:11,periodH:1.2};
+ try{const r=store.get('thresholds');return r?Object.assign(d,JSON.parse(r)):d}catch(e){return d}
 }
-function saveThresholds(){
-  store.set('thresholds', JSON.stringify(state.thresholds));
+function saveT(){store.set('thresholds',JSON.stringify(state.thresholds))}
+function verdict(kt,h,p,t){
+ let l;
+ if(kt>=t.windNo||h>=t.swellNo)l=2;
+ else if(kt<=t.windGo&&h<=t.swellGo)l=0;
+ else l=1;
+ if(l<2&&p>=t.period&&h>=t.periodH)l=Math.min(2,l+1);
+ return l;
 }
+const compass=d=>DIRS[Math.round(((d%360)/22.5))%16];
 
-/* ---------------- verdict ---------------- */
-function verdict(kt, swellH, swellP, t){
-  let lvl;
-  if (kt >= t.windNo || swellH >= t.swellNo) lvl = 2;
-  else if (kt <= t.windGo && swellH <= t.swellGo) lvl = 0;
-  else lvl = 1;
-  // Hayden's rule: weight period alongside height. Long-period swell on the
-  // exposed reefs is worse than the same height of short trade chop.
-  if (lvl < 2 && swellP >= t.period && swellH >= t.periodH) lvl = Math.min(2, lvl + 1);
-  return lvl;
-}
+/* ---------------- fetch ---------------- */
+const LATS=REEFS.map(r=>r.lat).join(','), LONS=REEFS.map(r=>r.lon).join(',');
+const windURL=m=>'https://api.open-meteo.com/v1/forecast?'+new URLSearchParams({
+ latitude:LATS,longitude:LONS,
+ hourly:'wind_speed_10m,wind_direction_10m,wind_gusts_10m,pressure_msl',
+ wind_speed_unit:'kn',timezone:TZ,forecast_days:DAYS,models:m});
+const marineURL=()=>'https://marine-api.open-meteo.com/v1/marine?'+new URLSearchParams({
+ latitude:LATS,longitude:LONS,
+ hourly:'wave_height,wave_period,wave_direction,swell_wave_height,swell_wave_period,swell_wave_direction,sea_level_height_msl,ocean_current_velocity,ocean_current_direction',
+ timezone:TZ,forecast_days:DAYS});
+const ensURL=r=>'https://ensemble-api.open-meteo.com/v1/ensemble?'+new URLSearchParams({
+ latitude:r.lat,longitude:r.lon,hourly:'wind_speed_10m',
+ wind_speed_unit:'kn',timezone:TZ,forecast_days:DAYS,models:'ecmwf_ifs025'});
 
-function compass(deg){ return DIRS[Math.round(((deg%360)/22.5))%16]; }
-
-/* ---------------- fetching ---------------- */
-async function getJSON(url){
-  const r = await fetch(url, {cache:'no-store'});
-  if(!r.ok) throw new Error(url.split('?')[0].split('/').pop()+' returned '+r.status);
-  return r.json();
+async function getJSON(u){
+ const r=await fetch(u,{cache:'no-store'});
+ if(!r.ok)throw new Error('HTTP '+r.status);
+ const j=await r.json();
+ return Array.isArray(j)?j:[j];
 }
-
-function windURL(reef, model){
-  const p = new URLSearchParams({
-    latitude: reef.lat, longitude: reef.lon,
-    hourly: 'wind_speed_10m,wind_direction_10m,wind_gusts_10m,pressure_msl',
-    wind_speed_unit: 'kn', timezone: TZ, forecast_days: DAYS, models: model
-  });
-  return 'https://api.open-meteo.com/v1/forecast?'+p;
-}
-function marineURL(reef){
-  const p = new URLSearchParams({
-    latitude: reef.lat, longitude: reef.lon,
-    hourly: 'wave_height,wave_period,wave_direction,swell_wave_height,swell_wave_period,swell_wave_direction,wind_wave_height,wind_wave_period',
-    timezone: TZ, forecast_days: DAYS
-  });
-  return 'https://marine-api.open-meteo.com/v1/marine?'+p;
-}
-function ensembleURL(reef){
-  const p = new URLSearchParams({
-    latitude: reef.lat, longitude: reef.lon,
-    hourly: 'wind_speed_10m', wind_speed_unit:'kn',
-    timezone: TZ, forecast_days: DAYS, models: 'ecmwf_ifs025'
-  });
-  return 'https://ensemble-api.open-meteo.com/v1/ensemble?'+p;
-}
-
-/* every request is allowed to fail on its own without killing the page */
-async function settle(promise){
-  try{ return {ok:true, value: await promise}; }
-  catch(e){ return {ok:false, error:e.message}; }
-}
+async function settle(p){try{return{ok:true,value:await p}}catch(e){return{ok:false,error:e.message}}}
 
 async function load(){
-  const reef = REEFS.find(r=>r.id===state.reef);
-  document.getElementById('err').textContent = '';
-  document.getElementById('stamp').textContent = 'Fetching…';
+ const reef=REEFS.find(r=>r.id===state.reef);
+ document.getElementById('stamp').textContent='Fetching…';
+ document.getElementById('err').textContent='';
+ const res=await Promise.all([
+  settle(getJSON(marineURL())), settle(getJSON(ensURL(reef))),
+  ...MODELS.map(m=>settle(getJSON(windURL(m.id))))
+ ]);
+ const marine=res[0], ens=res[1], mods=res.slice(2);
+ const models={};
+ MODELS.forEach((m,i)=>{
+  const r=mods[i];
+  if(!r.ok){state.modelStatus[m.id]='no response';return}
+  const a=r.value;
+  const live=a[0]&&a[0].hourly&&a[0].hourly.wind_speed_10m&&a[0].hourly.wind_speed_10m.some(v=>v!=null);
+  state.modelStatus[m.id]=live?'ok':'open data suspended';
+  if(live)models[m.id]=a;
+ });
+ if(!Object.keys(models).length){fail('No model returned usable data. Check your connection and try Refresh.');return}
+ if(!models[state.model]){state.model=Object.keys(models)[0];store.set('model',state.model)}
+ state.data={marine:marine.ok?marine.value:null,marineErr:marine.ok?null:marine.error,
+             ens:ens.ok?ens.value[0]:null,models,fetchedAt:new Date()};
+ state.cursor=0; state.allSeries={};
+ buildModelChips(); render();
+}
+function fail(m){
+ document.getElementById('stamp').textContent='Could not load';
+ const e=document.getElementById('err');e.className='status err';e.textContent=m;
+ ['chartBox','modelChart','mapBox','windows','days'].forEach(i=>document.getElementById(i).innerHTML='');
+}
 
-  const [marine, ensemble, ...models] = await Promise.all([
-    settle(getJSON(marineURL(reef))),
-    settle(getJSON(ensembleURL(reef))),
-    ...MODELS.map(m => settle(getJSON(windURL(reef, m.id))))
-  ]);
-
-  const modelData = {};
-  MODELS.forEach((m,i)=>{ if(models[i].ok) modelData[m.id] = models[i].value; });
-
-  if(!Object.keys(modelData).length){
-    fail('No wind model responded. '+(models[0].error||'')+' Check your connection and try Refresh.');
-    return;
+/* ---------------- series (memoised) ---------------- */
+const reefIndex=id=>REEFS.findIndex(r=>r.id===id);
+function series(reefId,modelId){
+ const key=reefId+'|'+modelId+'|'+JSON.stringify(state.thresholds);
+ if(state.allSeries[key])return state.allSeries[key];
+ const d=state.data, ri=reefIndex(reefId);
+ if(!d.models[modelId])return [];
+ const w=d.models[modelId][ri].hourly;
+ const m=d.marine?d.marine[ri].hourly:null;
+ const mi={}; if(m)m.time.forEach((t,i)=>mi[t]=i);
+ let flow=null,maxFlow=0.0001;
+ if(m&&m.sea_level_height_msl){
+  const h=m.sea_level_height_msl;
+  flow=h.map((_,i)=>{const a=h[i-1],b=h[i+1];return(a==null||b==null)?null:(b-a)/2});
+  const abs=flow.filter(v=>v!=null).map(Math.abs);
+  if(abs.length)maxFlow=Math.max(...abs,0.0001);
+ }
+ const out=[];
+ for(let i=0;i<w.time.length;i+=3){
+  const t=w.time[i], j=m?mi[t]:undefined;
+  const g=k=>(m&&j!==undefined&&m[k]&&m[k][j]!=null)?m[k][j]:null;
+  const waveH=g('wave_height'),waveP=g('wave_period');
+  const swH=g('swell_wave_height'),swP=g('swell_wave_period'),swD=g('swell_wave_direction');
+  const seaH=waveH!=null?waveH:(swH!=null?swH:0);
+  const seaP=swP!=null?swP:(waveP!=null?waveP:0);
+  const kt=w.wind_speed_10m[i], dt=new Date(t);
+  let fR=null,fDir=null;
+  if(flow&&j!==undefined&&flow[j]!=null){fR=Math.abs(flow[j])/maxFlow;fDir=flow[j]>=0?'flood':'ebb'}
+  out.push({time:t,dt,hour:dt.getHours(),kt,gust:w.wind_gusts_10m[i],dir:w.wind_direction_10m[i],
+   mslp:w.pressure_msl[i],waveH,waveP,swH,swP,swD,
+   curV:g('ocean_current_velocity'),curD:g('ocean_current_direction'),
+   fR,fDir,lvl:verdict(kt,seaH,seaP,state.thresholds)});
+ }
+ state.allSeries[key]=out;
+ return out;
+}
+function flowWord(r){
+ if(r==null)return '—';
+ if(r<0.25)return 'slack';
+ if(r<0.55)return 'easing';
+ if(r<0.80)return 'running';
+ return 'ripping';
+}
+function ensBands(){
+ const e=state.data.ens; if(!e)return null;
+ const h=e.hourly, keys=Object.keys(h).filter(k=>k.startsWith('wind_speed_10m'));
+ if(!keys.length)return null;
+ const idx={}; h.time.forEach((t,i)=>idx[t]=i);
+ return {keys,h,idx};
+}
+function bandAt(eb,time){
+ if(!eb)return null;
+ const i=eb.idx[time]; if(i===undefined)return null;
+ const v=eb.keys.map(k=>eb.h[k][i]).filter(x=>typeof x==='number').sort((a,b)=>a-b);
+ if(v.length<3)return null;
+ const q=p=>v[Math.min(v.length-1,Math.floor(p*v.length))];
+ return {lo:q(0.1),mid:q(0.5),hi:q(0.9),n:v.length};
+}
+function findWindows(s){
+ const runs=[];let c=null;
+ for(const b of s){
+  if(b.lvl<=1){c?(c.blocks.push(b),c.end=b):(c={start:b,end:b,blocks:[b]})}
+  else if(c){runs.push(c);c=null}
+ }
+ if(c)runs.push(c);
+ return runs.map(r=>({...r,hours:r.blocks.length*3,
+  worst:Math.max(...r.blocks.map(b=>b.lvl)),
+  maxKt:Math.max(...r.blocks.map(b=>b.kt)),
+  maxSea:Math.max(...r.blocks.map(b=>b.waveH??0))}))
+  .filter(r=>r.hours>=12).sort((a,b)=>b.hours-a.hours).slice(0,3);
+}
+/* Model spread across the whole range, at the same 3-hourly steps */
+function spreadSeries(){
+ const base=state.series, ri=reefIndex(state.reef), out=[];
+ const live=MODELS.filter(m=>state.data.models[m.id]);
+ for(const b of base){
+  const vals=[];
+  for(const m of live){
+   const h=state.data.models[m.id][ri].hourly, i=h.time.indexOf(b.time);
+   if(i>=0&&h.wind_speed_10m[i]!=null) vals.push({id:m.id,kt:h.wind_speed_10m[i],dir:h.wind_direction_10m[i]});
   }
-
-  state.data = {
-    reef,
-    marine: marine.ok ? marine.value : null,
-    marineErr: marine.ok ? null : marine.error,
-    ensemble: ensemble.ok ? ensemble.value : null,
-    models: modelData,
-    fetchedAt: new Date()
-  };
-  render();
+  const kts=vals.map(v=>v.kt);
+  out.push({time:b.time,dt:b.dt,hour:b.hour,vals,
+   spread:kts.length>1?Math.max(...kts)-Math.min(...kts):null, n:kts.length});
+ }
+ return out;
 }
+const spreadClass=s=>s==null?'':(s<=4?'tight':s<=8?'loose':'wide');
+const spreadCol=s=>s==null?'#173441':(s<=4?'#84C067':s<=8?'#E5A03A':'#FF3E9A');
 
-function fail(msg){
-  document.getElementById('stamp').textContent = 'Could not load';
-  const e = document.getElementById('err');
-  e.className = 'status err'; e.style.padding='0'; e.textContent = msg;
-  document.getElementById('windows').innerHTML = '<div class="no-window">No data.</div>';
-  document.getElementById('days').innerHTML = '';
-  document.getElementById('modelBox').innerHTML = '';
-  document.getElementById('ensBox').innerHTML = '';
-}
+const fD=new Intl.DateTimeFormat('en-AU',{weekday:'short',day:'numeric',month:'short',timeZone:TZ});
+const fT=new Intl.DateTimeFormat('en-AU',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:TZ});
 
-/* ---------------- build the 3-hourly series ---------------- */
-function buildSeries(){
-  const d = state.data;
-  const primaryId = modelPriority();
-  const wind = d.models[primaryId];
-  const times = wind.hourly.time;
-  const marine = d.marine ? d.marine.hourly : null;
-  const mIndex = {};
-  if(marine) marine.time.forEach((t,i)=>{ mIndex[t]=i; });
-
-  const out = [];
-  for(let i=0;i<times.length;i+=3){
-    const t = times[i];
-    const mi = marine ? mIndex[t] : undefined;
-    const swellH = (mi!==undefined && marine.swell_wave_height[mi]!=null) ? marine.swell_wave_height[mi] : null;
-    const swellP = (mi!==undefined && marine.swell_wave_period[mi]!=null) ? marine.swell_wave_period[mi] : null;
-    const waveH  = (mi!==undefined && marine.wave_height[mi]!=null) ? marine.wave_height[mi] : null;
-    const waveP  = (mi!==undefined && marine.wave_period[mi]!=null) ? marine.wave_period[mi] : null;
-    const windWaveH = (mi!==undefined && marine.wind_wave_height[mi]!=null) ? marine.wind_wave_height[mi] : null;
-
-    // Use total sea for the go/no-go call — that's what you actually punch through.
-    const seaH = waveH!=null ? waveH : (swellH!=null ? swellH : 0);
-    const seaP = swellP!=null ? swellP : (waveP!=null ? waveP : 0);
-
-    const kt = wind.hourly.wind_speed_10m[i];
-    const dt = new Date(t);
-    out.push({
-      time: t, dt,
-      hour: dt.getHours(),
-      kt,
-      gust: wind.hourly.wind_gusts_10m[i],
-      dir: wind.hourly.wind_direction_10m[i],
-      mslp: wind.hourly.pressure_msl[i],
-      waveH, waveP, swellH, swellP, windWaveH,
-      lvl: verdict(kt, seaH, seaP, state.thresholds),
-      hasMarine: waveH!=null
-    });
-  }
-  return out;
-}
-
-function modelPriority(){
-  const d = state.data;
-  for(const m of MODELS) if(d.models[m.id]) return m.id;
-  return Object.keys(d.models)[0];
-}
-
-/* ---------------- windows ---------------- */
-function findWindows(series){
-  const runs = [];
-  let cur = null;
-  for(const b of series){
-    if(b.lvl <= 1){
-      if(!cur) cur = {start:b, end:b, blocks:[b]};
-      else { cur.end = b; cur.blocks.push(b); }
-    } else if(cur){ runs.push(cur); cur = null; }
-  }
-  if(cur) runs.push(cur);
-  return runs
-    .map(r=>{
-      const hours = r.blocks.length * 3;
-      const worst = Math.max(...r.blocks.map(b=>b.lvl));
-      const maxKt = Math.max(...r.blocks.map(b=>b.kt));
-      const maxSea = Math.max(...r.blocks.map(b=>b.waveH ?? 0));
-      return {...r, hours, worst, maxKt, maxSea};
-    })
-    .filter(r=>r.hours >= 12)
-    .sort((a,b)=> b.hours - a.hours)
-    .slice(0,3);
-}
-
-/* ---------------- render ---------------- */
-const fmtDay  = new Intl.DateTimeFormat('en-AU',{weekday:'short',day:'numeric',month:'short',timeZone:TZ});
-const fmtTime = new Intl.DateTimeFormat('en-AU',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:TZ});
+/* shared x-axis geometry so both charts line up */
+const CW=660, CPAD=26, CRIGHT=10;
+const cx_=(i,n)=>CPAD+(i/(n-1))*(CW-CPAD-CRIGHT);
 
 function render(){
-  const d = state.data;
-  const series = buildSeries();
-
-  const primary = MODELS.find(m=>m.id===modelPriority());
-  document.getElementById('stamp').innerHTML =
-    '<b>'+primary.label+'</b> · '+fmtTime.format(d.fetchedAt)+' ' + fmtDay.format(d.fetchedAt) +
-    (d.marine ? '' : ' · <span style="color:var(--magenta)">no wave data</span>');
-
-  renderWindows(findWindows(series));
-  renderDays(series);
-  renderModels();
-  renderEnsemble();
-
-  const e = document.getElementById('err');
-  e.className='status'; e.textContent = d.marineErr ? ('Wave data unavailable: '+d.marineErr) : '';
+ state.series=series(state.reef,state.model).slice(0,state.span*8);
+ if(state.cursor>=state.series.length)state.cursor=0;
+ drawChart(); drawReadout(); drawSpread(); drawMap();
+ renderWindows(findWindows(state.series)); renderDays();
+ const d=state.data,m=MODELS.find(x=>x.id===state.model);
+ document.getElementById('stamp').innerHTML='<b>'+m.label+'</b> · '+fT.format(d.fetchedAt)+' '+fD.format(d.fetchedAt)
+  +(d.marine?'':' · <span style="color:var(--magenta)">no wave data</span>');
+ const e=document.getElementById('err');e.className='status';
+ e.textContent=d.marineErr?('Wave data unavailable: '+d.marineErr):'';
+}
+function moveCursor(n){
+ if(n===state.cursor)return;
+ state.cursor=n; drawChart(); drawReadout(); drawSpread(); drawMap();
+}
+function attachScrub(svg,n){
+ const move=ev=>{
+  const r=svg.getBoundingClientRect();
+  const px=(ev.clientX-r.left)/r.width*CW;
+  const i=Math.round(((px-CPAD)/(CW-CPAD-CRIGHT))*(n-1));
+  moveCursor(Math.max(0,Math.min(n-1,i)));
+ };
+ svg.addEventListener('pointerdown',e=>{svg.setPointerCapture(e.pointerId);move(e)});
+ svg.addEventListener('pointermove',e=>{if(e.buttons)move(e)});
+}
+function dayTicks(v,H,bottom){
+ return v.map((b,i)=>b.hour===0?
+  '<line x1="'+cx_(i,v.length).toFixed(1)+'" x2="'+cx_(i,v.length).toFixed(1)+'" y1="0" y2="'+bottom+'" stroke="#204250"/>'
+  +'<text x="'+(cx_(i,v.length)+3).toFixed(1)+'" y="'+(H-3)+'" fill="#6E8E9B" font-size="9.5" font-family="monospace">'+fD.format(b.dt).replace(',','')+'</text>':'').join('');
 }
 
-function renderWindows(wins){
-  const box = document.getElementById('windows');
-  if(!wins.length){
-    box.innerHTML = '<div class="no-window">Nothing over 12 hours clears your thresholds in the next '+DAYS+' days.<br>Loosen them below, or wait for the next run.</div>';
-    return;
-  }
-  box.innerHTML = wins.map(w=>{
-    const days = Math.floor(w.hours/24), hrs = w.hours%24;
-    const dur = (days? days+'d ':'') + (hrs? hrs+'h' : (days?'':'0h'));
-    return '<div class="win lvl'+w.worst+'">'
-      + '<div class="win-range">'+fmtDay.format(w.start.dt)+' '+fmtTime.format(w.start.dt)
-      + '<br>→ '+fmtDay.format(w.end.dt)+' '+fmtTime.format(w.end.dt)+'</div>'
-      + '<div class="win-meta"><span class="win-dur">'+dur+'</span>'
-      + ' · peak '+Math.round(w.maxKt)+' kt'
-      + (w.maxSea? ' · sea to '+w.maxSea.toFixed(1)+' m':'')
-      + ' · '+(w.worst===0?'all clear':'includes marginal blocks')+'</div></div>';
-  }).join('');
+/* ---- chart 1: wind + ensemble + sea + verdict ---- */
+function drawChart(){
+ const v=state.series, n=v.length, Hw=112, Hs=58, Hr=15, gap=9;
+ const H=Hw+gap+Hs+gap+Hr+16, eb=ensBands();
+ let maxKt=25; v.forEach(b=>{maxKt=Math.max(maxKt,b.gust||b.kt);const q=bandAt(eb,b.time);if(q)maxKt=Math.max(maxKt,q.hi)});
+ const yW=k=>Hw-(k/maxKt)*(Hw-12);
+ let maxSea=1.5; v.forEach(b=>{if(b.waveH!=null)maxSea=Math.max(maxSea,b.waveH)});
+ const sTop=Hw+gap, yS=m=>sTop+Hs-(m/maxSea)*(Hs-8);
+ let band='';
+ if(eb){
+  const hi=[],lo=[];
+  v.forEach((b,i)=>{const q=bandAt(eb,b.time);if(q){hi.push(cx_(i,n).toFixed(1)+','+yW(q.hi).toFixed(1));lo.unshift(cx_(i,n).toFixed(1)+','+yW(q.lo).toFixed(1))}});
+  if(hi.length>2)band='<polygon points="'+hi.concat(lo).join(' ')+'" fill="#7FB8C4" opacity="0.2"/>';
+ }
+ const wl=v.map((b,i)=>(i?'L':'M')+cx_(i,n).toFixed(1)+' '+yW(b.kt).toFixed(1)).join(' ');
+ const gl=v.map((b,i)=>(i?'L':'M')+cx_(i,n).toFixed(1)+' '+yW(b.gust).toFixed(1)).join(' ');
+ const sa='M'+cx_(0,n).toFixed(1)+' '+(sTop+Hs)+' '+v.map((b,i)=>'L'+cx_(i,n).toFixed(1)+' '+yS(b.waveH??0).toFixed(1)).join(' ')+' L'+cx_(n-1,n).toFixed(1)+' '+(sTop+Hs)+' Z';
+ const grid=[10,20,30,40].filter(k=>k<=maxKt).map(k=>
+  '<line x1="'+CPAD+'" x2="'+(CW-CRIGHT)+'" y1="'+yW(k).toFixed(1)+'" y2="'+yW(k).toFixed(1)+'" stroke="#204250" stroke-dasharray="2 4"/>'
+  +'<text x="2" y="'+(yW(k)+4).toFixed(1)+'" fill="#6E8E9B" font-size="10" font-family="monospace">'+k+'</text>').join('');
+ const ry=sTop+Hs+gap, cw=(CW-CPAD-CRIGHT)/n;
+ const ribbon=v.map((b,i)=>{
+  const c=['#84C067','#E5A03A','#FF3E9A'][b.lvl];
+  return '<rect x="'+(CPAD+i*cw).toFixed(1)+'" y="'+ry+'" width="'+Math.max(1,cw-1).toFixed(1)+'" height="'+Hr+'" fill="'+c+'"'+((b.hour<6||b.hour>18)?' opacity="0.35"':'')+'/>';
+ }).join('');
+ const cx=cx_(state.cursor,n);
+ document.getElementById('chartBox').innerHTML=
+  '<svg class="chart" viewBox="0 0 '+CW+' '+H+'" id="chartSvg" role="img" aria-label="Wind and sea, drag to scrub">'
+  +grid+'<line x1="'+CPAD+'" x2="'+(CW-CRIGHT)+'" y1="'+yW(state.thresholds.windGo).toFixed(1)+'" y2="'+yW(state.thresholds.windGo).toFixed(1)+'" stroke="#84C067"/>'
+  +band
+  +'<path d="'+gl+'" fill="none" stroke="#7FB8C4" stroke-width="1" opacity="0.45" stroke-dasharray="3 3"/>'
+  +'<path d="'+wl+'" fill="none" stroke="#E8DCC0" stroke-width="1.8"/>'
+  +'<path d="'+sa+'" fill="#7FB8C4" opacity="0.3"/>'
+  +'<text x="2" y="'+(sTop+11)+'" fill="#6E8E9B" font-size="10" font-family="monospace">'+maxSea.toFixed(1)+'m</text>'
+  +ribbon+dayTicks(v,H,ry+Hr)
+  +'<line x1="'+cx.toFixed(1)+'" x2="'+cx.toFixed(1)+'" y1="0" y2="'+(ry+Hr)+'" stroke="#E8DCC0" stroke-width="1.5"/>'
+  +'<circle cx="'+cx.toFixed(1)+'" cy="'+yW(v[state.cursor].kt).toFixed(1)+'" r="3.5" fill="#E8DCC0"/></svg>';
+ attachScrub(document.getElementById('chartSvg'),n);
 }
 
-function arrowSVG(deg){
-  // Wind direction is reported as the bearing it blows FROM.
-  // Point the arrow the way the air is actually going.
-  const r = (deg + 180) % 360;
-  return '<svg class="arrow" viewBox="0 0 24 24" aria-hidden="true">'
-    + '<g transform="rotate('+r.toFixed(0)+' 12 12)">'
-    + '<path d="M12 3 L17 15 L12 12.6 L7 15 Z"/></g></svg>';
+function drawReadout(){
+ const b=state.series[state.cursor], q=bandAt(ensBands(),b.time);
+ document.getElementById('readout').innerHTML=
+  '<div class="big v'+b.lvl+'">'+fD.format(b.dt)+' '+String(b.hour).padStart(2,'0')+':00 · '+['go','marginal','no-go'][b.lvl]+'</div>'
+  +'<div><span class="k">wind</span> '+Math.round(b.kt)+' kt '+compass(b.dir)+'</div>'
+  +'<div><span class="k">gust</span> '+Math.round(b.gust)+' kt</div>'
+  +'<div><span class="k">sea</span> '+(b.waveH!=null?b.waveH.toFixed(1)+' m / '+Math.round(b.waveP||0)+'s':'—')+'</div>'
+  +'<div><span class="k">swell</span> '+(b.swH!=null?b.swH.toFixed(1)+' m / '+Math.round(b.swP||0)+'s '+(b.swD!=null?compass(b.swD):''):'—')+'</div>'
+  +'<div><span class="k">mslp</span> '+Math.round(b.mslp)+' hPa</div>'
+  +'<div><span class="k">tidal flow</span> <span style="color:var(--tide)">'+flowWord(b.fR)+(b.fDir?' '+b.fDir:'')+'</span></div>'
+  +'<div><span class="k">drift</span> '+(b.curV!=null?(b.curV*1.94384).toFixed(1)+' kt '+(b.curD!=null?compass(b.curD):''):'—')+'</div>'
+  +'<div><span class="k">ensemble</span> '+(q?'±'+((q.hi-q.lo)/2).toFixed(0)+' kt / '+q.n+' members':'—')+'</div>';
 }
 
-function renderDays(series){
-  const byDay = {};
-  for(const b of series){
-    const k = b.dt.toDateString();
-    (byDay[k] = byDay[k] || []).push(b);
-  }
-  document.getElementById('days').innerHTML = Object.keys(byDay).map(k=>{
-    const blocks = byDay[k];
-    const day = blocks[0].dt;
-    const dayl = blocks.filter(b=>b.hour>=6 && b.hour<=18);
-    const best = dayl.length ? Math.min(...dayl.map(b=>b.lvl)) : 2;
-    const kts  = dayl.length ? dayl.map(b=>b.kt) : blocks.map(b=>b.kt);
-    const lo = Math.round(Math.min(...kts)), hi = Math.round(Math.max(...kts));
-
-    const ribbon = blocks.map(b=>
-      '<div class="cell lvl'+b.lvl+(b.hour<6||b.hour>18?' night':'')+'">'+String(b.hour).padStart(2,'0')+'</div>'
-    ).join('');
-
-    const rows = blocks.map(b=>
-      '<div class="row'+(b.hour<6||b.hour>18?' is-night':'')+'">'
-      + '<span class="t">'+String(b.hour).padStart(2,'0')+':00</span>'
-      + arrowSVG(b.dir)
-      + '<span class="v">'+Math.round(b.kt)+' kt '+compass(b.dir)
-        + '<span class="sub"> g'+Math.round(b.gust)+'</span></span>'
-      + '<span class="v">'+(b.waveH!=null ? b.waveH.toFixed(1)+' m<span class="sub"> '+Math.round(b.waveP||0)+'s</span>' : '—')
-        + (b.swellH!=null ? '<span class="sub"> sw '+b.swellH.toFixed(1)+'/'+Math.round(b.swellP||0)+'s</span>' : '')+'</span>'
-      + '<span class="dot lvl'+b.lvl+'"></span>'
-      + '</div>'
-    ).join('');
-
-    return '<div class="day">'
-      + '<div class="day-head"><div class="day-name">'+fmtDay.format(day)+'</div>'
-      + '<div class="day-sum">'+lo+'–'+hi+' kt daylight<br>'
-      + (best===0?'go':best===1?'marginal':'no-go')+' at best</div></div>'
-      + '<div class="ribbon">'+ribbon+'</div>'
-      + '<div class="rows">'+rows+'</div></div>';
-  }).join('');
-}
-
-/* Compare models at the same hour: midday of the third forecast day,
-   far enough out that disagreement means something. */
-function renderModels(){
-  const d = state.data;
-  const target = new Date();
-  target.setDate(target.getDate()+3);
-  const stamp = target.toISOString().slice(0,10)+'T12:00';
-
-  const rows = [];
-  for(const m of MODELS){
-    const md = d.models[m.id];
-    if(!md) continue;
-    const i = md.hourly.time.indexOf(stamp);
-    if(i<0) continue;
-    rows.push({label:m.label, kt: md.hourly.wind_speed_10m[i], dir: md.hourly.wind_direction_10m[i]});
-  }
-
-  const box = document.getElementById('modelBox');
-  if(rows.length<2){
-    box.innerHTML = '<div class="mnote">Not enough models returned data to compare.</div>';
-    return;
-  }
-  const max = Math.max(...rows.map(r=>r.kt), 25);
-  const lo = Math.min(...rows.map(r=>r.kt)), hi = Math.max(...rows.map(r=>r.kt));
-  const spread = hi - lo;
-  const cls = spread<=4 ? 'tight' : spread<=8 ? 'loose' : 'wide';
-  const word = spread<=4 ? 'tight' : spread<=8 ? 'loose' : 'wide';
-
-  box.innerHTML = rows.map(r=>
-    '<div class="mrow"><span class="mname">'+r.label+'</span>'
-    + '<span class="mbar"><i style="width:'+Math.min(100,(r.kt/max)*100).toFixed(0)+'%"></i></span>'
-    + '<span class="mval">'+Math.round(r.kt)+' kt '+compass(r.dir)+'</span></div>'
-  ).join('')
-  + '<div class="mnote">Midday, three days out. Spread <span class="agree '+cls+'">'+spread.toFixed(0)+' kt ('+word+')</span>.<br>'
-  + 'Tight spread means the models agree and you can plan on it. Wide spread means the pattern is unresolved — wait for the next run.</div>';
-}
-
-function renderEnsemble(){
-  const d = state.data, box = document.getElementById('ensBox');
-  if(!d.ensemble){
-    box.innerHTML = '<div class="ens-legend">Ensemble unavailable right now.</div>';
-    return;
-  }
-  const h = d.ensemble.hourly;
-  const keys = Object.keys(h).filter(k=>k.startsWith('wind_speed_10m'));
-  if(!keys.length){ box.innerHTML='<div class="ens-legend">Ensemble returned no wind members.</div>'; return; }
-
-  const step = 6, pts = [];
-  for(let i=0;i<h.time.length;i+=step){
-    const vals = keys.map(k=>h[k][i]).filter(v=>typeof v === 'number').sort((a,b)=>a-b);
-    if(!vals.length) continue;
-    const q = p => vals[Math.min(vals.length-1, Math.floor(p*vals.length))];
-    pts.push({t:new Date(h.time[i]), lo:q(0.1), mid:q(0.5), hi:q(0.9)});
-  }
-  if(pts.length<2){ box.innerHTML='<div class="ens-legend">Not enough ensemble points to plot.</div>'; return; }
-
-  const W=600, H=150, pad=22;
-  const maxV = Math.max(30, ...pts.map(p=>p.hi));
-  const x = i => pad + (i/(pts.length-1))*(W-pad*2);
-  const y = v => H-pad - (v/maxV)*(H-pad*2);
-
-  const band = pts.map((p,i)=>x(i).toFixed(1)+','+y(p.hi).toFixed(1)).join(' ')
-    + ' ' + pts.slice().reverse().map((p,i)=>{
-        const j = pts.length-1-i; return x(j).toFixed(1)+','+y(pts[j].lo).toFixed(1);
-      }).join(' ');
-  const line = pts.map((p,i)=>(i?'L':'M')+x(i).toFixed(1)+' '+y(p.mid).toFixed(1)).join(' ');
-
-  const gridVals = [10,20,30].filter(v=>v<=maxV);
-  const grid = gridVals.map(v=>
-    '<line x1="'+pad+'" x2="'+(W-pad)+'" y1="'+y(v).toFixed(1)+'" y2="'+y(v).toFixed(1)+'" stroke="#204250" stroke-width="1" stroke-dasharray="2 4"/>'
-    + '<text x="2" y="'+(y(v)+4).toFixed(1)+'" fill="#6E8E9B" font-size="10" font-family="monospace">'+v+'</text>'
-  ).join('');
-
-  const goLine = '<line x1="'+pad+'" x2="'+(W-pad)+'" y1="'+y(state.thresholds.windGo).toFixed(1)+'" y2="'+y(state.thresholds.windGo).toFixed(1)+'" stroke="#84C067" stroke-width="1"/>';
-
-  const dayTicks = pts.map((p,i)=> (p.t.getHours()<6 && i>0) ?
-    '<text x="'+x(i).toFixed(1)+'" y="'+(H-6)+'" fill="#6E8E9B" font-size="9" font-family="monospace" text-anchor="middle">'+p.t.getDate()+'</text>' : ''
-  ).join('');
-
-  const now = pts.filter(p=>p.hi-p.lo!=null);
-  const avgSpread = now.reduce((s,p)=>s+(p.hi-p.lo),0)/now.length;
-
-  box.innerHTML = '<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" role="img" aria-label="Ensemble wind spread">'
-    + grid + goLine
-    + '<polygon points="'+band+'" fill="#7FB8C4" opacity="0.22"/>'
-    + '<path d="'+line+'" fill="none" stroke="#E8DCC0" stroke-width="1.6"/>'
-    + dayTicks
-    + '</svg>'
-    + '<div class="ens-legend">Shaded band is the 10th to 90th percentile across ECMWF members. '
-    + 'Pale line is the median. Green line is your go threshold ('+state.thresholds.windGo+' kt).<br>'
-    + 'Average spread '+avgSpread.toFixed(1)+' kt. Where the band is narrow and sits under the green line, the lull is real. '
-    + 'Where it fans out, one run is guessing.</div>';
-}
-
-/* ---------------- wiring ---------------- */
-function buildReefButtons(){
-  const nav = document.getElementById('reefs');
-  nav.innerHTML = REEFS.map(r=>
-    '<button class="reef-btn" data-id="'+r.id+'" aria-pressed="'+(r.id===state.reef)+'">'+r.name+'</button>'
-  ).join('');
-  nav.addEventListener('click', e=>{
-    const b = e.target.closest('.reef-btn'); if(!b) return;
-    state.reef = b.dataset.id; store.set('reef', state.reef);
-    [...nav.children].forEach(c=>c.setAttribute('aria-pressed', c.dataset.id===state.reef));
-    showReefNote(); load();
+/* ---- chart 2: every model over the full range, plus a spread ribbon ---- */
+function drawSpread(){
+ const sp=spreadSeries(), n=sp.length, Hm=118, Hr=13, gap=9, H=Hm+gap+Hr+16;
+ const live=MODELS.filter(m=>state.data.models[m.id]);
+ let maxKt=25; sp.forEach(p=>p.vals.forEach(v=>{maxKt=Math.max(maxKt,v.kt)}));
+ const y=k=>Hm-(k/maxKt)*(Hm-12);
+ const lines=live.map(m=>{
+  let d='',open=false;
+  sp.forEach((p,i)=>{
+   const v=p.vals.find(x=>x.id===m.id);
+   if(!v){open=false;return}
+   d+=(open?'L':'M')+cx_(i,n).toFixed(1)+' '+y(v.kt).toFixed(1)+' '; open=true;
   });
-  showReefNote();
-}
-function showReefNote(){
-  const r = REEFS.find(x=>x.id===state.reef);
-  document.getElementById('reefNote').textContent = r.note;
+  return d?'<path d="'+d+'" fill="none" stroke="'+m.col+'" stroke-width="'+(m.id===state.model?2.2:1.2)+'" opacity="'+(m.id===state.model?1:0.8)+'"/>':'';
+ }).join('');
+ const grid=[10,20,30,40].filter(k=>k<=maxKt).map(k=>
+  '<line x1="'+CPAD+'" x2="'+(CW-CRIGHT)+'" y1="'+y(k).toFixed(1)+'" y2="'+y(k).toFixed(1)+'" stroke="#204250" stroke-dasharray="2 4"/>'
+  +'<text x="2" y="'+(y(k)+4).toFixed(1)+'" fill="#6E8E9B" font-size="10" font-family="monospace">'+k+'</text>').join('');
+ const ry=Hm+gap, cw=(CW-CPAD-CRIGHT)/n;
+ const ribbon=sp.map((p,i)=>
+  '<rect x="'+(CPAD+i*cw).toFixed(1)+'" y="'+ry+'" width="'+Math.max(1,cw-1).toFixed(1)+'" height="'+Hr+'" fill="'+spreadCol(p.spread)+'"/>').join('');
+ const cx=cx_(state.cursor,n);
+ document.getElementById('modelChart').innerHTML=
+  '<svg class="chart" viewBox="0 0 '+CW+' '+H+'" id="spreadSvg" role="img" aria-label="Model agreement over the range, drag to scrub">'
+  +grid+lines+ribbon+dayTicks(sp,H,ry+Hr)
+  +'<line x1="'+cx.toFixed(1)+'" x2="'+cx.toFixed(1)+'" y1="0" y2="'+(ry+Hr)+'" stroke="#E8DCC0" stroke-width="1.5" opacity="0.8"/></svg>';
+ attachScrub(document.getElementById('spreadSvg'),n);
+
+ document.getElementById('modelLegend').innerHTML=
+  MODELS.map(m=>{
+   const on=!!state.data.models[m.id];
+   return '<span class="'+(on?'':'off')+'"><span class="sw" style="background:'+m.col+'"></span><b style="color:'+(on?m.col:'var(--dim)')+'">'+m.label+'</b>'
+    +(on?'':' ('+(state.modelStatus[m.id]||'unavailable')+')')+'</span>';
+  }).join('');
+
+ const p=sp[state.cursor], now=p.spread;
+ const wide=sp.filter(x=>x.spread!=null&&x.spread>8), firstWide=wide.length?wide[0]:null;
+ document.getElementById('modelNote').innerHTML=
+  '<b style="color:var(--buff);font-weight:500">'+fD.format(p.dt)+' '+String(p.hour).padStart(2,'0')+':00</b> — '
+  +(now==null?'only one model live, no spread to report.'
+    :'<span class="agree '+spreadClass(now)+'">'+now.toFixed(0)+' kt spread ('+spreadClass(now)+')</span> across '+p.n+' models: '
+     +p.vals.map(v=>MODELS.find(m=>m.id===v.id).label+' '+Math.round(v.kt)).join(', ')+' kt.')
+  +'<br>Ribbon under the lines is spread per block: green under 4 kt, amber to 8, magenta beyond. '
+  +(firstWide?'Agreement first breaks down around <b style="color:var(--magenta);font-weight:500">'+fD.format(firstWide.dt)+' '+String(firstWide.hour).padStart(2,'0')+':00</b>. Treat anything past that as provisional.'
+            :'No block in this range exceeds 8 kt of spread. The models are holding one solution throughout.')
+  +'<br>Models returning nothing are excluded rather than counted as calm.';
 }
 
-const inputs = {
-  tWindGo:'windGo', tSwellGo:'swellGo', tWindNo:'windNo',
-  tSwellNo:'swellNo', tPeriod:'period', tPeriodH:'periodH'
-};
-Object.entries(inputs).forEach(([elId, key])=>{
-  const el = document.getElementById(elId);
-  el.value = state.thresholds[key];
-  el.addEventListener('change', ()=>{
-    const v = parseFloat(el.value);
-    if(!isNaN(v)){ state.thresholds[key] = v; saveThresholds(); if(state.data) render(); }
-  });
+/* ---- Web Mercator chartlet with tile underlay ---- */
+const TSZ=256;
+const mx=(lon,z)=>(lon+180)/360*TSZ*Math.pow(2,z);
+const my=(lat,z)=>{const r=lat*Math.PI/180;return (1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*TSZ*Math.pow(2,z)};
+
+function drawMap(){
+ const t=state.series[state.cursor].time;
+ const shown=REEFS.filter(r=>state.extent==='group'||r.cap||r.id===state.reef);
+ const pts=shown.map(r=>{
+  const s=series(r.id,state.model), i=s.findIndex(b=>b.time===t);
+  return {reef:r,b:s[i>=0?i:0]};
+ }).filter(p=>p.b);
+
+ const padDeg=state.extent==='group'?0.09:0.07;
+ const latN=Math.max(...shown.map(r=>r.lat))+padDeg, latS=Math.min(...shown.map(r=>r.lat))-padDeg;
+ const lonW=Math.min(...shown.map(r=>r.lon))-padDeg, lonE=Math.max(...shown.map(r=>r.lon))+padDeg;
+
+ const W=CW, pad=8, maxH=520, targetW=W-pad*2;
+ let z=12;
+ for(let k=7;k<=14;k++){ if(mx(lonE,k)-mx(lonW,k)>=targetW){z=k;break} z=k; }
+ let bw=mx(lonE,z)-mx(lonW,z), bh=my(latS,z)-my(latN,z);
+ const scale=Math.min(targetW/bw, (maxH-pad*2)/bh);
+ const H=Math.round(bh*scale)+pad*2;
+ const offX=pad+(targetW-bw*scale)/2, offY=pad;
+ const PX=lon=>offX+(mx(lon,z)-mx(lonW,z))*scale;
+ const PY=lat=>offY+(my(lat,z)-my(latN,z))*scale;
+
+ let tiles='';
+ if(state.basemap!=='none'){
+  const base=TILES[state.basemap];
+  const x0=Math.floor(mx(lonW,z)/TSZ), x1=Math.floor(mx(lonE,z)/TSZ);
+  const y0=Math.floor(my(latN,z)/TSZ), y1=Math.floor(my(latS,z)/TSZ);
+  const size=TSZ*scale;
+  for(let xt=x0;xt<=x1;xt++)for(let yt=y0;yt<=y1;yt++){
+   const px=offX+(xt*TSZ-mx(lonW,z))*scale, py=offY+(yt*TSZ-my(latN,z))*scale;
+   tiles+='<image href="'+base+z+'/'+yt+'/'+xt+'" x="'+px.toFixed(2)+'" y="'+py.toFixed(2)
+     +'" width="'+(size+0.6).toFixed(2)+'" height="'+(size+0.6).toFixed(2)+'" preserveAspectRatio="none"/>';
+  }
+ }
+ const dim=state.basemap==='none'?'':'<rect width="'+W+'" height="'+H+'" fill="#0A1922" opacity="'+(state.basemap==='imagery'?0.34:0.2)+'"/>';
+
+ const marks=pts.map(p=>{
+  const cx=PX(p.reef.lon), cy=PY(p.reef.lat), b=p.b, sel=p.reef.id===state.reef;
+  const col=['#84C067','#E5A03A','#FF3E9A'][b.lvl];
+  const L=8+Math.min(32,b.kt*1.6), a=(((b.dir+180)%360)-90)*Math.PI/180;
+  let sw='';
+  if(b.swD!=null&&b.swH!=null){
+   const sa=(((b.swD+180)%360)-90)*Math.PI/180, SL=8+Math.min(24,b.swH*14);
+   sw='<line x1="'+cx.toFixed(1)+'" y1="'+cy.toFixed(1)+'" x2="'+(cx+Math.cos(sa)*SL).toFixed(1)+'" y2="'+(cy+Math.sin(sa)*SL).toFixed(1)+'" stroke="#7FB8C4" stroke-width="1.6" stroke-dasharray="3 2"/>';
+  }
+  return sw
+   +'<line x1="'+cx.toFixed(1)+'" y1="'+cy.toFixed(1)+'" x2="'+(cx+Math.cos(a)*L).toFixed(1)+'" y2="'+(cy+Math.sin(a)*L).toFixed(1)+'" stroke="'+col+'" stroke-width="2.2"/>'
+   +'<circle cx="'+(cx+Math.cos(a)*L).toFixed(1)+'" cy="'+(cy+Math.sin(a)*L).toFixed(1)+'" r="2.8" fill="'+col+'"/>'
+   +'<circle cx="'+cx.toFixed(1)+'" cy="'+cy.toFixed(1)+'" r="'+(sel?7:5)+'" fill="none" stroke="'+(sel?'#E8DCC0':'#C6D8DE')+'" stroke-width="'+(sel?2:1.4)+'"/>'
+   +'<text x="'+cx.toFixed(1)+'" y="'+(cy+21).toFixed(1)+'" fill="#0A1922" stroke="#0A1922" stroke-width="3" font-size="11.5" font-family="monospace" text-anchor="middle">'+p.reef.short+'</text>'
+   +'<text x="'+cx.toFixed(1)+'" y="'+(cy+21).toFixed(1)+'" fill="'+(sel?'#E8DCC0':'#C6D8DE')+'" font-size="11.5" font-family="monospace" text-anchor="middle">'+p.reef.short+'</text>'
+   +'<text x="'+cx.toFixed(1)+'" y="'+(cy+33).toFixed(1)+'" fill="#0A1922" stroke="#0A1922" stroke-width="3" font-size="11.5" font-family="monospace" text-anchor="middle">'+Math.round(b.kt)+'kt</text>'
+   +'<text x="'+cx.toFixed(1)+'" y="'+(cy+33).toFixed(1)+'" fill="'+col+'" font-size="11.5" font-family="monospace" text-anchor="middle">'+Math.round(b.kt)+'kt</text>';
+ }).join('');
+
+ const nmPx=(my(latN,z)-my(latN-1/60*10,z))*scale;
+ const bar='<line x1="'+(pad+6)+'" x2="'+(pad+6+nmPx).toFixed(1)+'" y1="'+(H-14)+'" y2="'+(H-14)+'" stroke="#E8DCC0" stroke-width="2"/>'
+  +'<text x="'+(pad+10+nmPx).toFixed(1)+'" y="'+(H-10)+'" fill="#E8DCC0" font-size="10.5" font-family="monospace">10 nm</text>';
+
+ document.getElementById('mapBox').innerHTML=
+  '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Chartlet of the group"><rect width="'+W+'" height="'+H+'" fill="#0D1E28"/>'
+  +tiles+dim+marks+bar+'</svg>';
+ document.getElementById('mapLegend').innerHTML=
+  '<span class="sw" style="background:#84C067"></span>solid arrow — wind, length by speed, pointing the way it blows<br>'
+  +'<span class="sw" style="background:#7FB8C4"></span>dashed arrow — swell, length by height<br>'
+  +'Arrow colour is the verdict at that reef. Drag either chart above to move through time.';
+ document.getElementById('mapAttrib').textContent=
+  state.basemap==='imagery'?'Imagery: Esri, Maxar, Earthstar Geographics and the GIS User Community'
+  :state.basemap==='ocean'?'Bathymetry: Esri, GEBCO, NOAA, National Geographic and other contributors'
+  :'';
+}
+
+function renderWindows(w){
+ const box=document.getElementById('windows');
+ if(!w.length){box.innerHTML='<div class="no-window">Nothing over 12 hours clears your thresholds in this range.<br>Loosen them below, or widen to 10 day.</div>';return}
+ box.innerHTML=w.map(x=>{
+  const dd=Math.floor(x.hours/24),hh=x.hours%24;
+  return '<div class="win lvl'+x.worst+'"><div class="win-range">'
+   +fD.format(x.start.dt)+' '+fT.format(x.start.dt)+'<br>→ '+fD.format(x.end.dt)+' '+fT.format(x.end.dt)+'</div>'
+   +'<div class="win-meta"><span class="win-dur">'+(dd?dd+'d ':'')+hh+'h</span> · peak '+Math.round(x.maxKt)+' kt'
+   +(x.maxSea?' · sea to '+x.maxSea.toFixed(1)+' m':'')+' · '+(x.worst===0?'all clear':'includes marginal')+'</div></div>';
+ }).join('');
+}
+const arrowSVG=d=>'<svg class="arrow" viewBox="0 0 24 24" aria-hidden="true"><g transform="rotate('+(((d+180)%360)).toFixed(0)+' 12 12)"><path d="M12 3 L17 15 L12 12.6 L7 15 Z"/></g></svg>';
+function renderDays(){
+ const by={};
+ for(const b of state.series){const k=b.dt.toDateString();(by[k]=by[k]||[]).push(b)}
+ document.getElementById('days').innerHTML=Object.keys(by).map(k=>{
+  const bl=by[k], dl=bl.filter(b=>b.hour>=6&&b.hour<=18);
+  const kts=(dl.length?dl:bl).map(b=>b.kt);
+  const best=dl.length?Math.min(...dl.map(b=>b.lvl)):2;
+  const ribbon=bl.map(b=>'<div class="cell lvl'+b.lvl+((b.hour<6||b.hour>18)?' night':'')+'">'+String(b.hour).padStart(2,'0')+'</div>').join('');
+  const rows=bl.map(b=>
+   '<div class="row'+((b.hour<6||b.hour>18)?' is-night':'')+'">'
+   +'<span class="t">'+String(b.hour).padStart(2,'0')+':00</span>'+arrowSVG(b.dir)
+   +'<span>'+Math.round(b.kt)+' kt '+compass(b.dir)+'<span class="sub"> g'+Math.round(b.gust)+'</span></span>'
+   +'<span>'+(b.waveH!=null?b.waveH.toFixed(1)+' m<span class="sub"> '+Math.round(b.waveP||0)+'s</span>':'—')
+     +(b.swH!=null?'<span class="sub"> sw '+b.swH.toFixed(1)+'</span>':'')+'</span>'
+   +'<span class="cur">'+flowWord(b.fR)+'</span><span class="dot lvl'+b.lvl+'"></span></div>').join('');
+  return '<div class="day"><div class="day-head"><div class="day-name">'+fD.format(bl[0].dt)+'</div>'
+   +'<div class="day-sum">'+Math.round(Math.min(...kts))+'–'+Math.round(Math.max(...kts))+' kt daylight<br>'
+   +['go','marginal','no-go'][best]+' at best</div></div>'
+   +'<div class="ribbon">'+ribbon+'</div><div>'+rows+'</div></div>';
+ }).join('');
+}
+
+/* ---- chips ---- */
+function chipRow(el,items,active,pick,offFn){
+ el.innerHTML=items.map(i=>{
+  const off=offFn?offFn(i):false;
+  return '<button class="chip" data-id="'+i.id+'" aria-pressed="'+(i.id===active)+'"'+(off?' disabled':'')+'>'+i.label+'</button>';
+ }).join('');
+ el.onclick=e=>{const b=e.target.closest('.chip');if(!b||b.disabled)return;pick(b.dataset.id)};
+}
+function buildModelChips(){
+ chipRow(document.getElementById('models'),MODELS,state.model,
+  id=>{state.model=id;store.set('model',id);buildModelChips();render()},
+  m=>!state.data||!state.data.models[m.id]);
+}
+function buildReefChips(){
+ chipRow(document.getElementById('reefs'),REEFS.map(r=>({id:r.id,label:r.name})),state.reef,
+  id=>{state.reef=id;store.set('reef',id);buildReefChips();render()});
+ document.getElementById('reefNote').textContent=REEFS.find(r=>r.id===state.reef).note;
+}
+function buildSpanChips(){
+ chipRow(document.getElementById('spans'),SPANS,String(state.span),
+  id=>{state.span=parseInt(id,10);store.set('span',id);state.cursor=0;buildSpanChips();render()});
+}
+function buildMapChips(){
+ chipRow(document.getElementById('basemaps'),BASEMAPS,state.basemap,
+  id=>{state.basemap=id;store.set('basemap',id);buildMapChips();drawMap()});
+ chipRow(document.getElementById('extents'),EXTENTS,state.extent,
+  id=>{state.extent=id;store.set('extent',id);buildMapChips();drawMap()});
+}
+
+const IN={tWindGo:'windGo',tSwellGo:'swellGo',tWindNo:'windNo',tSwellNo:'swellNo',tPeriod:'period',tPeriodH:'periodH'};
+Object.entries(IN).forEach(([id,key])=>{
+ const el=document.getElementById(id); el.value=state.thresholds[key];
+ el.addEventListener('change',()=>{const v=parseFloat(el.value);if(!isNaN(v)){state.thresholds[key]=v;saveT();state.allSeries={};if(state.data)render()}});
+});
+document.getElementById('refresh').addEventListener('click',load);
+document.addEventListener('visibilitychange',()=>{
+ if(!document.hidden&&state.data&&(Date.now()-state.data.fetchedAt)>30*60*1000)load();
 });
 
-document.getElementById('refresh').addEventListener('click', load);
-document.addEventListener('visibilitychange', ()=>{
-  if(!document.hidden && state.data && (Date.now() - state.data.fetchedAt) > 30*60*1000) load();
-});
-
-buildReefButtons();
-load();
+buildReefChips(); buildSpanChips(); buildMapChips(); load();
 </script>
 </body>
 </html>
