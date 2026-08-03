@@ -16,7 +16,7 @@
 :root{
   --ink:#0A1922; --ink-2:#102630; --ink-3:#173441; --hairline:#204250;
   --shoal:#7FB8C4; --buff:#E8DCC0; --dim:#6E8E9B;
-  --drying:#84C067; --amber:#E5A03A; --magenta:#FF3E9A; --tide:#C79BE0;
+  --drying:#84C067; --amber:#E5A03A; --magenta:#FF3E9A; --tide:#C79BE0; --rain:#5A8FA8;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{-webkit-text-size-adjust:100%}
@@ -26,6 +26,7 @@ body{background:var(--ink);color:var(--buff);
   padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   -webkit-font-smoothing:antialiased}
 .wrap{max-width:660px;margin:0 auto;padding:0 16px 64px}
+.mono{font-family:'IBM Plex Mono',ui-monospace,monospace}
 
 .masthead{padding:20px 0 12px;border-bottom:1px solid var(--hairline)}
 .eyebrow{font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--shoal);font-weight:500}
@@ -63,13 +64,21 @@ body{background:var(--ink);color:var(--buff);
 .readout .warn{grid-column:1 / -1;color:var(--magenta);padding-top:6px;font-size:11.5px;line-height:1.6}
 .v0{color:var(--drying)} .v1{color:var(--amber)} .v2{color:var(--magenta)}
 
+.swellwrap{display:grid;grid-template-columns:186px 1fr;gap:14px;align-items:start}
+@media (max-width:520px){.swellwrap{grid-template-columns:1fr}}
+.trains{font-family:'IBM Plex Mono',monospace;font-size:12.5px}
+.train{display:grid;grid-template-columns:12px 1fr auto;gap:8px;align-items:baseline;padding:5px 0;border-top:1px dotted var(--ink-3)}
+.train:first-child{border-top:none}
+.tdot{width:9px;height:9px;border-radius:50%;align-self:center}
+.train .tn{color:var(--dim);font-size:11.5px}
+.train .tv{text-align:right;white-space:nowrap}
+
 .legend{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim);margin-top:10px;line-height:1.75}
 .sw{display:inline-block;width:13px;height:2px;vertical-align:middle;margin-right:5px}
 .attrib{font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:#48606B;margin-top:8px}
 
 .mlegend{display:flex;flex-wrap:wrap;gap:4px 14px;font-family:'IBM Plex Mono',monospace;font-size:11.5px;margin-top:10px}
 .mlegend span{white-space:nowrap;color:var(--dim)}
-.mlegend b{font-weight:500}
 .mlegend .off{text-decoration:line-through;opacity:.6}
 .mnote{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim);margin-top:12px;line-height:1.75}
 .agree{font-weight:600}
@@ -87,14 +96,17 @@ body{background:var(--ink);color:var(--buff);
 .day-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
 .day-name{font-size:21px;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
 .day-sum{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim);text-align:right}
-.ribbon{display:flex;gap:2px;margin:11px 0 3px;height:32px}
+.slackbar{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--tide);
+  padding:8px 0 2px;line-height:1.7}
+.slackbar .pk{color:var(--shoal)}
+.ribbon{display:flex;gap:2px;margin:9px 0 3px;height:32px}
 .cell{flex:1;border-radius:1px;display:flex;align-items:flex-end;justify-content:center;
   padding-bottom:3px;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500}
 .cell.lvl0{background:var(--drying);color:#0A1F0A}
 .cell.lvl1{background:var(--amber);color:#2A1A00}
 .cell.lvl2{background:var(--magenta);color:#2A0014}
 .cell.night{opacity:.34}
-.row{display:grid;grid-template-columns:36px 20px 1fr 1fr 54px 10px;gap:6px;align-items:center;
+.row{display:grid;grid-template-columns:36px 20px 1fr 1fr 58px 10px;gap:6px;align-items:center;
   font-family:'IBM Plex Mono',monospace;font-size:12.5px;padding:6px 0;border-top:1px dotted var(--ink-3)}
 .row .t{color:var(--dim);font-size:11.5px}
 .arrow{width:20px;height:20px;display:block}
@@ -106,7 +118,8 @@ body{background:var(--ink);color:var(--buff);
 .row.is-night{opacity:.55}
 
 details{padding:18px 0;border-bottom:1px solid var(--hairline)}
-summary{font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--shoal);font-weight:500;cursor:pointer;list-style:none}
+summary{font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--shoal);
+  font-weight:500;cursor:pointer;list-style:none}
 summary::-webkit-details-marker{display:none}
 summary::after{content:' +';font-family:'IBM Plex Mono',monospace}
 details[open] summary::after{content:' −'}
@@ -116,6 +129,10 @@ details[open] summary::after{content:' −'}
   font-family:'IBM Plex Mono',monospace;font-size:14px;padding:7px 9px;border-radius:2px;text-align:right}
 .thresh input:focus-visible{outline:2px solid var(--shoal);outline-offset:1px}
 .thresh-note{grid-column:1 / -1;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim);line-height:1.6;padding-top:4px}
+.outlook{margin-top:16px}
+.otext{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--dim);line-height:1.8;margin-top:12px}
+.otext b{color:var(--buff);font-weight:500}
+.otext .good{color:var(--drying)} .otext .bad{color:var(--magenta)}
 
 .btn{background:transparent;border:1px solid var(--shoal);color:var(--shoal);font-family:inherit;
   font-size:15px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;padding:10px 17px;border-radius:2px;cursor:pointer}
@@ -153,19 +170,31 @@ details[open] summary::after{content:' −'}
   <div class="reef-note" id="reefNote"></div>
 
   <section class="panel">
-    <div class="panel-label">Wind and sea</div>
-    <div class="sublabel">Shaded band is the ECMWF ensemble: one model run 51 times from slightly
-      different starting conditions. Narrow means small measurement errors do not change the outcome.</div>
+    <div class="panel-label">Wind, sea, tide</div>
+    <div class="sublabel">Four tracks on one clock. Wind with the ECMWF ensemble band behind it and rain
+      chance as faint bars. Sea height. Tide, with slack water marked. Verdict strip along the bottom.</div>
     <nav class="chips" id="spans" aria-label="Range"></nav>
-    <div id="chartBox"><div class="skel" style="height:210px"></div></div>
+    <div id="chartBox"><div class="skel" style="height:260px"></div></div>
     <div class="readout" id="readout"></div>
   </section>
 
   <section class="panel">
+    <div class="panel-label">Swell trains</div>
+    <div class="sublabel">The single sea figure above is an average of everything running. That can
+      mislead badly: a reported 1.8 m at 11 s might really be 1.6 m at 8 s from the east with 0.8 m at
+      14 s from the south underneath it. Arrows point to where each train is coming from.</div>
+    <div class="swellwrap">
+      <div id="roseBox"><div class="skel" style="height:186px"></div></div>
+      <div class="trains" id="trains"></div>
+    </div>
+    <div class="legend" id="swellNote"></div>
+  </section>
+
+  <section class="panel">
     <div class="panel-label">Model agreement</div>
-    <div class="sublabel">A different question: do independent forecasting centres agree? One line per
-      model. Where they braid together you can plan on it. Where they fan apart the pattern is unresolved,
-      and a narrow ensemble above will not save you.</div>
+    <div class="sublabel">A different question from the ensemble band: do independent forecasting centres
+      agree? Where the lines braid together you can plan on it. Where they fan apart the pattern is
+      unresolved, and a narrow ensemble will not save you.</div>
     <div id="modelChart"><div class="skel" style="height:150px"></div></div>
     <div class="mlegend" id="modelLegend"></div>
     <div class="mnote" id="modelNote"></div>
@@ -188,6 +217,14 @@ details[open] summary::after{content:' −'}
 
   <section id="days"></section>
 
+  <details id="outlookDetails">
+    <summary>Longer outlook and seasonal norms</summary>
+    <div class="outlook" id="outlookBox">
+      <div class="otext">Open this panel to pull fifteen years of ERA5 reanalysis and the ECMWF
+        six-week sub-seasonal run. Takes a few seconds.</div>
+    </div>
+  </details>
+
   <details>
     <summary>Thresholds for this region</summary>
     <div class="thresh">
@@ -198,7 +235,7 @@ details[open] summary::after{content:' −'}
       <label for="tPeriod">Long-period swell from (s)</label><input id="tPeriod" type="number" inputmode="decimal">
       <label for="tPeriodH">…and at or over (m), downgrade</label><input id="tPeriodH" type="number" inputmode="decimal" step="0.1">
       <div class="thresh-note">Each region keeps its own set. A day trip off the Tweed tolerates more
-        than three nights at anchor in the Bunkers, so they should not share numbers.</div>
+        than three nights at anchor in the Bunkers.</div>
     </div>
   </details>
 
@@ -210,17 +247,18 @@ details[open] summary::after{content:' −'}
   <div class="foot">
     <b class="warn">Not for navigation.</b> The underlay is a reference basemap, not a hydrographic
     chart. Esri state that GEBCO bathymetry must not be used for navigation or any purpose relating to
-    safety at sea, and global resolution outside US waters only reaches about 1:577,000. Satellite
-    imagery shows reef platforms well but carries no soundings and no dependable capture date.<br><br>
-    <b>Bar entrances.</b> Marked in lilac. A bar block is downgraded whenever the tide is ebbing with
-    real swell running, because that is when the bar stands up. This is a prompt to look, not a
-    clearance. Get eyes on the bar, check VMR or Coast Guard, and cross on the flood if you have the
-    choice.<br><br>
-    <b>Tidal flow.</b> Derived from how fast modelled sea level is changing, not from a tidal stream
-    atlas. Timing of the turn will be about right, speed is indicative only. The marine model runs at
-    8 km and does not resolve the channels or the bar itself.<br><br>
-    Wind grid spacing does not capture reef-scale sheltering. The lee will always fish better than the
-    number shown. Cross-check the relevant BoM coastal waters forecast before you leave.
+    safety at sea. Satellite imagery carries no soundings and no dependable capture date.<br><br>
+    <b>Slack water and tidal flow.</b> Derived from turning points in modelled sea level, not from a
+    tidal stream atlas. Times of the turn should be close. What the app cannot tell you is which way
+    the stream sets at a given reef, because tidal stream direction is not in this data. Flooding and
+    ebbing here mean rising and falling water, nothing about heading. The separate drift figure is
+    large-scale ocean current, mostly East Australian Current, and is a different thing again.<br><br>
+    <b>Bar entrances.</b> Lilac diamonds. Downgraded when the tide is ebbing with real swell running.
+    A prompt to look, not a clearance.<br><br>
+    <b>Seasonal outlook.</b> ERA5 reanalysis runs at 9 to 25 km and reads windier than a point
+    forecast, so use the percentile framing rather than the absolute numbers. ECMWF EC46 is not
+    bias-corrected and is area guidance, not a local forecast.<br><br>
+    Cross-check the relevant BoM coastal waters forecast before you leave.
   </div>
 
 </div>
@@ -228,20 +266,19 @@ details[open] summary::after{content:' −'}
 <script>
 "use strict";
 
-/* Positions marked (est) are my best estimate and should be checked against your plotter. */
 const REGIONS=[
  {id:'capricorn', label:'Capricorn Bunker', minWindow:12,
   note:'Multi-day offshore. Windows scored over 12 hours or more, because you are staying at sea.',
   bom:'Capricornia Coastal Waters, St Lawrence to Burnett Heads',
   defaults:{windGo:10,swellGo:1.0,windNo:20,swellNo:2.0,period:11,periodH:1.2},
   spots:[
-   {id:'sykes',   name:'Sykes',        short:'SYK',  lat:-23.4331, lon:152.0325, note:'Eastern edge of the group. Most exposed to E and SE. Current runs hard on the springs.'},
-   {id:'lamont',  name:'Lamont',       short:'LAM',  lat:-23.6000, lon:152.0489, note:'South-east corner. Open to southerly swell wrapping up from the Tasman.'},
-   {id:'broom',   name:'Broomfield',   short:'BRO',  lat:-23.2650, lon:151.9400, note:'North of Heron. Best lee in a SE. Position is an estimate (est) — check your plotter.'},
-   {id:'nwi',     name:'North West Is',short:'NWI',  lat:-23.2983, lon:151.7075, note:'Largest cay in the Marine Park. Western side of the group, so it sits in the lee of a SE.'},
-   {id:'masthead',name:'Masthead Is',  short:'MHD',  lat:-23.5383, lon:151.7333, note:'Elongate platform reef on the western side. Sheltered anchoring on the lee.'},
-   {id:'heron',   name:'Heron',        short:'HER',  lat:-23.4425, lon:151.9139, note:'Reference point. Compare against what the apps are showing you.'},
-   {id:'lmi',     name:'Lady Musgrave',short:'LMI',  lat:-23.9063, lon:152.4006, note:'Fallback. Navigable lagoon, the forgiving overnight anchorage in the group.'},
+   {id:'sykes',   name:'Sykes',        short:'SYK',  lat:-23.4331,  lon:152.0325, note:'Eastern edge of the group. Most exposed to E and SE. Current runs hard on the springs.'},
+   {id:'lamont',  name:'Lamont',       short:'LAM',  lat:-23.6000,  lon:152.0489, note:'South-east corner. Open to southerly swell wrapping up from the Tasman.'},
+   {id:'broom',   name:'Broomfield',   short:'BRO',  lat:-23.2650,  lon:151.9400, note:'North of Heron. Best lee in a SE. Position is an estimate — check your plotter.'},
+   {id:'nwi',     name:'North West Is',short:'NWI',  lat:-23.2983,  lon:151.7075, note:'Largest cay in the Marine Park. Western side, so it sits in the lee of a SE.'},
+   {id:'masthead',name:'Masthead Is',  short:'MHD',  lat:-23.5383,  lon:151.7333, note:'Elongate platform reef on the western side. Sheltered anchoring on the lee.'},
+   {id:'heron',   name:'Heron',        short:'HER',  lat:-23.4425,  lon:151.9139, note:'Reference point. Compare against what the apps are showing you.'},
+   {id:'lmi',     name:'Lady Musgrave',short:'LMI',  lat:-23.9063,  lon:152.4006, note:'Fallback. Navigable lagoon, the forgiving overnight anchorage in the group.'},
    {id:'bar1770', name:'1770 Bar',     short:'1770', lat:-24.16170, lon:151.87420, bar:true, inshore:true,
                   note:'Round Hill Creek entrance. Departure point, not a dive site. Watch it on the ebb with any south in the swell.'}
   ]},
@@ -250,11 +287,11 @@ const REGIONS=[
   bom:'Gold Coast Waters, Cape Moreton to Point Danger',
   defaults:{windGo:12,swellGo:1.2,windNo:22,swellNo:2.5,period:12,periodH:1.5},
   spots:[
-   {id:'ninemile',  name:'Nine Mile',   short:'9ML', lat:-28.19460, lon:153.62893,
+   {id:'ninemile',  name:'Nine Mile', short:'9ML', lat:-28.19460, lon:153.62893,
                     note:'About 5.8 km off Fingal Head, 4.1 nm from the Tweed bar. Open to E and SE.'},
-   {id:'kingscliff',name:'Kingscliff',  short:'KGC', lat:-28.24828, lon:153.59798, inshore:true,
-                    note:'Around 2 km off Cudgen. Close enough in that the wave grid cell also contains land — read the sea figure loosely.'},
-   {id:'tweedbar',  name:'Tweed Bar',   short:'TWD', lat:-28.16908, lon:153.55643, bar:true, inshore:true,
+   {id:'kingscliff',name:'Kingscliff', short:'KGC', lat:-28.24828, lon:153.59798, inshore:true,
+                    note:'Around 2 km off Cudgen. Close enough in that the wave grid cell also contains land.'},
+   {id:'tweedbar',  name:'Tweed Bar', short:'TWD', lat:-28.16908, lon:153.55643, bar:true, inshore:true,
                     note:'The gate. Training walls help but it still stands up on an ebb against south swell.'}
   ]},
  {id:'moreton', label:'Moreton', minWindow:6,
@@ -262,9 +299,9 @@ const REGIONS=[
   bom:'Gold Coast Waters, Cape Moreton to Point Danger',
   defaults:{windGo:12,swellGo:1.2,windNo:22,swellNo:2.5,period:12,periodH:1.5},
   spots:[
-   {id:'flinders', name:'Flinders Reef',short:'FLR', lat:-26.9667, lon:153.4833, note:'North of Cape Moreton. The pick of the northern reefs, exposed once it gets up.'},
-   {id:'smiths',   name:'Smiths Rock',  short:'SMR', lat:-26.9800, lon:153.5300, note:'East of Flinders, deeper and more exposed. Position is an estimate (est).'},
-   {id:'capemor',  name:'Cape Moreton', short:'CPM', lat:-27.0330, lon:153.4670, note:'The corner. Useful reference for what is happening at the top of the island.'}
+   {id:'flinders', name:'Flinders Reef', short:'FLR', lat:-26.9667, lon:153.4833, note:'North of Cape Moreton. Pick of the northern reefs, exposed once it gets up.'},
+   {id:'smiths',   name:'Smiths Rock',   short:'SMR', lat:-26.9800, lon:153.5300, note:'East of Flinders, deeper and more exposed. Position is an estimate.'},
+   {id:'capemor',  name:'Cape Moreton',  short:'CPM', lat:-27.0330, lon:153.4670, note:'The corner. Useful reference for the top of the island.'}
   ]}
 ];
 
@@ -283,6 +320,18 @@ const TILES={
 };
 const TZ='Australia/Brisbane', DAYS=10;
 const DIRS=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+/* swell partitions: base variable prefix, label, colour */
+const TRAINS=[
+ {p:'wind_wave',        label:'Wind wave',  col:'#E5A03A'},
+ {p:'swell_wave',       label:'Primary',    col:'#7FB8C4'},
+ {p:'secondary_swell_wave', label:'Secondary', col:'#C79BE0'},
+ {p:'tertiary_swell_wave',  label:'Tertiary',  col:'#84C067'}
+];
+const MARINE_BASE=['wave_height','wave_period','wave_direction','sea_level_height_msl','ocean_current_velocity','ocean_current_direction'];
+const MARINE_TRAINS=[];
+TRAINS.forEach(t=>MARINE_TRAINS.push(t.p+'_height',t.p+'_period',t.p+'_direction'));
 
 const store=(()=>{let m={};return{
  get(k){try{return localStorage.getItem(k)}catch(e){return m[k]??null}},
@@ -294,7 +343,8 @@ let state={
  model:store.get('model')||'ecmwf_ifs025',
  span:parseInt(store.get('span')||'5',10),
  basemap:store.get('basemap')||'imagery',
- cursor:0, data:null, modelStatus:{}, series:null, cache:{}
+ cursor:0, data:null, modelStatus:{}, series:null, cache:{}, tideEvents:null,
+ outlook:null, outlookLoading:false
 };
 
 const REGION=()=>REGIONS.find(r=>r.id===state.region);
@@ -314,25 +364,25 @@ function verdict(kt,h,p,t,spot,fR,fDir){
  else if(kt<=t.windGo&&h<=t.swellGo)l=0;
  else l=1;
  if(l<2&&p>=t.period&&h>=t.periodH)l=Math.min(2,l+1);
- // Bar entrances: swell against an outgoing tide is what stands the bar up.
  if(l<2&&spot&&spot.bar&&fDir==='ebb'&&fR!=null&&fR>0.45&&h>=1.0)l=Math.min(2,l+1);
  return l;
 }
 const compass=d=>DIRS[Math.round(((d%360)/22.5))%16];
+const pad2=n=>String(n).padStart(2,'0');
+const iso=d=>d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());
 
-/* ---------------- fetch (region-scoped) ---------------- */
-function coords(){
- const s=SPOTS();
- return {lat:s.map(x=>x.lat).join(','), lon:s.map(x=>x.lon).join(',')};
-}
+/* ---------------- fetch ---------------- */
+function coords(){const s=SPOTS();return{lat:s.map(x=>x.lat).join(','),lon:s.map(x=>x.lon).join(',')}}
 const windURL=m=>{const c=coords();return 'https://api.open-meteo.com/v1/forecast?'+new URLSearchParams({
  latitude:c.lat,longitude:c.lon,
  hourly:'wind_speed_10m,wind_direction_10m,wind_gusts_10m,pressure_msl',
  wind_speed_unit:'kn',timezone:TZ,forecast_days:DAYS,models:m})};
-const marineURL=()=>{const c=coords();return 'https://marine-api.open-meteo.com/v1/marine?'+new URLSearchParams({
+const rainURL=()=>{const c=coords();return 'https://api.open-meteo.com/v1/forecast?'+new URLSearchParams({
  latitude:c.lat,longitude:c.lon,
- hourly:'wave_height,wave_period,wave_direction,swell_wave_height,swell_wave_period,swell_wave_direction,sea_level_height_msl,ocean_current_velocity,ocean_current_direction',
+ hourly:'precipitation_probability,precipitation,cloud_cover',
  timezone:TZ,forecast_days:DAYS})};
+const marineURL=vars=>{const c=coords();return 'https://marine-api.open-meteo.com/v1/marine?'+new URLSearchParams({
+ latitude:c.lat,longitude:c.lon,hourly:vars.join(','),timezone:TZ,forecast_days:DAYS})};
 const ensURL=s=>'https://ensemble-api.open-meteo.com/v1/ensemble?'+new URLSearchParams({
  latitude:s.lat,longitude:s.lon,hourly:'wind_speed_10m',
  wind_speed_unit:'kn',timezone:TZ,forecast_days:DAYS,models:'ecmwf_ifs025'});
@@ -345,14 +395,22 @@ async function getJSON(u){
 }
 async function settle(p){try{return{ok:true,value:await p}}catch(e){return{ok:false,error:e.message}}}
 
+/* Try the full partition list; drop back to the basics if the API rejects it. */
+async function fetchMarine(){
+ let r=await settle(getJSON(marineURL(MARINE_BASE.concat(MARINE_TRAINS))));
+ if(r.ok)return{value:r.value,partitions:true};
+ r=await settle(getJSON(marineURL(MARINE_BASE.concat(['wind_wave_height','wind_wave_period','wind_wave_direction','swell_wave_height','swell_wave_period','swell_wave_direction']))));
+ if(r.ok)return{value:r.value,partitions:false};
+ return{value:null,partitions:false,error:r.error};
+}
+
 async function load(){
  document.getElementById('stamp').textContent='Fetching…';
  document.getElementById('err').textContent='';
- const res=await Promise.all([
-  settle(getJSON(marineURL())), settle(getJSON(ensURL(SPOT()))),
+ const [marine,rain,ens,...mods]=await Promise.all([
+  fetchMarine(), settle(getJSON(rainURL())), settle(getJSON(ensURL(SPOT()))),
   ...MODELS.map(m=>settle(getJSON(windURL(m.id))))
  ]);
- const marine=res[0], ens=res[1], mods=res.slice(2);
  const models={};
  MODELS.forEach((m,i)=>{
   const r=mods[i];
@@ -364,15 +422,43 @@ async function load(){
  });
  if(!Object.keys(models).length){fail('No model returned usable data. Check your connection and try Refresh.');return}
  if(!models[state.model]){state.model=Object.keys(models)[0];store.set('model',state.model)}
- state.data={marine:marine.ok?marine.value:null,marineErr:marine.ok?null:marine.error,
-             ens:ens.ok?ens.value[0]:null,models,fetchedAt:new Date()};
- state.cursor=0; state.cache={};
+ state.data={marine:marine.value,partitions:marine.partitions,marineErr:marine.error||null,
+  rain:rain.ok?rain.value:null, ens:ens.ok?ens.value[0]:null, models, fetchedAt:new Date()};
+ state.cursor=0; state.cache={}; state.outlook=null;
  buildModelChips(); render();
+ if(document.getElementById('outlookDetails').open)loadOutlook();
 }
 function fail(m){
  document.getElementById('stamp').textContent='Could not load';
  const e=document.getElementById('err');e.className='status err';e.textContent=m;
- ['chartBox','modelChart','mapBox','windows','days'].forEach(i=>document.getElementById(i).innerHTML='');
+ ['chartBox','modelChart','mapBox','windows','days','roseBox','trains'].forEach(i=>{const el=document.getElementById(i);if(el)el.innerHTML=''});
+}
+
+/* ---------------- tide turning points (hourly, parabolic refine) ---------------- */
+function tideEvents(spotId){
+ const d=state.data; if(!d.marine)return[];
+ const si=spotIndex(spotId), m=d.marine[si].hourly;
+ const h=m.sea_level_height_msl; if(!h)return[];
+ const ev=[];
+ for(let i=1;i<h.length-1;i++){
+  const a=h[i-1],b=h[i],c=h[i+1];
+  if(a==null||b==null||c==null)continue;
+  const isHigh=b>a&&b>c, isLow=b<a&&b<c;
+  if(!isHigh&&!isLow)continue;
+  const den=(a-2*b+c);
+  const off=den!==0?0.5*(a-c)/den:0;
+  const t=new Date(m.time[i]); t.setMinutes(t.getMinutes()+Math.round(off*60));
+  ev.push({t,kind:isHigh?'H':'L',height:b-(den!==0?0.25*(a-c)*off:0)});
+ }
+ // peak flow sits between consecutive turns
+ const peaks=[];
+ for(let i=0;i<ev.length-1;i++){
+  const mid=new Date((ev[i].t.getTime()+ev[i+1].t.getTime())/2);
+  const range=Math.abs(ev[i+1].height-ev[i].height);
+  const hours=(ev[i+1].t-ev[i].t)/3600000;
+  peaks.push({t:mid,rate:hours>0?range/hours:0,dir:ev[i+1].height>ev[i].height?'flood':'ebb'});
+ }
+ return {turns:ev,peaks};
 }
 
 /* ---------------- series ---------------- */
@@ -384,7 +470,9 @@ function series(spotId,modelId){
  if(!d.models[modelId]||si<0)return [];
  const w=d.models[modelId][si].hourly;
  const m=d.marine?d.marine[si].hourly:null;
+ const rn=d.rain?d.rain[si].hourly:null;
  const mi={}; if(m)m.time.forEach((tt,i)=>mi[tt]=i);
+ const ri={}; if(rn)rn.time.forEach((tt,i)=>ri[tt]=i);
  let flow=null,maxFlow=0.0001;
  if(m&&m.sea_level_height_msl){
   const h=m.sea_level_height_msl;
@@ -394,20 +482,28 @@ function series(spotId,modelId){
  }
  const out=[];
  for(let i=0;i<w.time.length;i+=3){
-  const tm=w.time[i], j=m?mi[tm]:undefined;
-  const g=k=>(m&&j!==undefined&&m[k]&&m[k][j]!=null)?m[k][j]:null;
-  const waveH=g('wave_height'),waveP=g('wave_period');
-  const swH=g('swell_wave_height'),swP=g('swell_wave_period'),swD=g('swell_wave_direction');
-  const seaH=waveH!=null?waveH:(swH!=null?swH:0);
-  const seaP=swP!=null?swP:(waveP!=null?waveP:0);
+  const tm=w.time[i], j=m?mi[tm]:undefined, k=rn?ri[tm]:undefined;
+  const g=key2=>(m&&j!==undefined&&m[key2]&&m[key2][j]!=null)?m[key2][j]:null;
+  const waveH=g('wave_height'),waveP=g('wave_period'),waveD=g('wave_direction');
+  const trains=TRAINS.map(tr=>({
+   label:tr.label,col:tr.col,
+   h:g(tr.p+'_height'), p:g(tr.p+'_period'), d:g(tr.p+'_direction')
+  })).filter(x=>x.h!=null&&x.h>0.05);
+  // longest-period train drives the period penalty, not the blended average
+  const longP=trains.length?Math.max(...trains.map(x=>x.p||0)):(waveP||0);
+  const longPh=trains.length?(trains.reduce((a,b)=>((b.p||0)>(a.p||0)?b:a)).h||0):(waveH||0);
+  const seaH=waveH!=null?waveH:(trains.length?Math.sqrt(trains.reduce((s,x)=>s+x.h*x.h,0)):0);
   const kt=w.wind_speed_10m[i], dt=new Date(tm);
   let fR=null,fDir=null;
   if(flow&&j!==undefined&&flow[j]!=null){fR=Math.abs(flow[j])/maxFlow;fDir=flow[j]>=0?'flood':'ebb'}
   out.push({time:tm,dt,hour:dt.getHours(),kt,gust:w.wind_gusts_10m[i],dir:w.wind_direction_10m[i],
-   mslp:w.pressure_msl[i],waveH,waveP,swH,swP,swD,
+   mslp:w.pressure_msl[i],waveH,waveP,waveD,trains,
+   tide:(m&&j!==undefined&&m.sea_level_height_msl)?m.sea_level_height_msl[j]:null,
+   rainP:(rn&&k!==undefined&&rn.precipitation_probability)?rn.precipitation_probability[k]:null,
+   rainMm:(rn&&k!==undefined&&rn.precipitation)?rn.precipitation[k]:null,
    curV:g('ocean_current_velocity'),curD:g('ocean_current_direction'),fR,fDir,
    barRisk:!!(spot.bar&&fDir==='ebb'&&fR!=null&&fR>0.45&&seaH>=1.0),
-   lvl:verdict(kt,seaH,seaP,t,spot,fR,fDir)});
+   lvl:verdict(kt,seaH,Math.max(longP,longPh>=thresholds().periodH?longP:0),t,spot,fR,fDir)});
  }
  state.cache[key]=out;
  return out;
@@ -457,8 +553,7 @@ function spreadSeries(){
    if(i>=0&&h.wind_speed_10m[i]!=null)vals.push({id:m.id,kt:h.wind_speed_10m[i],dir:h.wind_direction_10m[i]});
   }
   const kts=vals.map(v=>v.kt);
-  out.push({time:b.time,dt:b.dt,hour:b.hour,vals,
-   spread:kts.length>1?Math.max(...kts)-Math.min(...kts):null,n:kts.length});
+  out.push({time:b.time,dt:b.dt,hour:b.hour,vals,spread:kts.length>1?Math.max(...kts)-Math.min(...kts):null,n:kts.length});
  }
  return out;
 }
@@ -474,7 +569,8 @@ function render(){
  state.series=series(state.spot,state.model).slice(0,state.span*8);
  if(!state.series.length){fail('No series for this location.');return}
  if(state.cursor>=state.series.length)state.cursor=0;
- drawChart(); drawReadout(); drawSpread(); drawMap();
+ state.tideEvents=tideEvents(state.spot);
+ drawChart(); drawReadout(); drawSwell(); drawSpread(); drawMap();
  renderWindows(); renderDays();
  const d=state.data,m=MODELS.find(x=>x.id===state.model),r=REGION();
  document.getElementById('regionEyebrow').textContent=r.label;
@@ -485,7 +581,7 @@ function render(){
  const e=document.getElementById('err');e.className='status';
  e.textContent=d.marineErr?('Wave data unavailable: '+d.marineErr):'';
 }
-function moveCursor(n){if(n===state.cursor)return;state.cursor=n;drawChart();drawReadout();drawSpread();drawMap()}
+function moveCursor(n){if(n===state.cursor)return;state.cursor=n;drawChart();drawReadout();drawSwell();drawSpread();drawMap()}
 function attachScrub(svg,n){
  const move=ev=>{
   const r=svg.getBoundingClientRect();
@@ -500,12 +596,27 @@ const dayTicks=(v,H,bottom)=>v.map((b,i)=>b.hour===0?
  '<line x1="'+cx_(i,v.length).toFixed(1)+'" x2="'+cx_(i,v.length).toFixed(1)+'" y1="0" y2="'+bottom+'" stroke="#204250"/>'
  +'<text x="'+(cx_(i,v.length)+3).toFixed(1)+'" y="'+(H-3)+'" fill="#6E8E9B" font-size="9.5" font-family="monospace">'+fD.format(b.dt).replace(',','')+'</text>':'').join('');
 
+/* ---- hero: wind + rain / sea / tide + slack / verdict ---- */
 function drawChart(){
- const v=state.series,n=v.length,Hw=112,Hs=58,Hr=15,gap=9,H=Hw+gap+Hs+gap+Hr+16,eb=ensBands(),t=thresholds();
+ const v=state.series,n=v.length,Hw=104,Hs=50,Ht=48,Hr=14,gap=8;
+ const H=Hw+gap+Hs+gap+Ht+gap+Hr+16, eb=ensBands(), t=thresholds();
  let maxKt=25; v.forEach(b=>{maxKt=Math.max(maxKt,b.gust||b.kt);const q=bandAt(eb,b.time);if(q)maxKt=Math.max(maxKt,q.hi)});
  const yW=k=>Hw-(k/maxKt)*(Hw-12);
  let maxSea=1.5; v.forEach(b=>{if(b.waveH!=null)maxSea=Math.max(maxSea,b.waveH)});
- const sTop=Hw+gap, yS=m=>sTop+Hs-(m/maxSea)*(Hs-8);
+ const sTop=Hw+gap, yS=x=>sTop+Hs-(x/maxSea)*(Hs-8);
+ const tTop=sTop+Hs+gap;
+ const tideVals=v.map(b=>b.tide).filter(x=>x!=null);
+ const tLo=tideVals.length?Math.min(...tideVals):0, tHi=tideVals.length?Math.max(...tideVals):1;
+ const yT=x=>tTop+Ht-((x-tLo)/((tHi-tLo)||1))*(Ht-10);
+
+ // rain probability as faint bars behind the wind track
+ const cw=(CW-CPAD-CRIGHT)/n;
+ const rain=v.map((b,i)=>{
+  if(b.rainP==null||b.rainP<5)return '';
+  const h=(b.rainP/100)*(Hw-12);
+  return '<rect x="'+(CPAD+i*cw).toFixed(1)+'" y="'+(Hw-h).toFixed(1)+'" width="'+Math.max(1,cw-1).toFixed(1)+'" height="'+h.toFixed(1)+'" fill="#5A8FA8" opacity="0.28"/>';
+ }).join('');
+
  let band='';
  if(eb){
   const hi=[],lo=[];
@@ -515,39 +626,111 @@ function drawChart(){
  const wl=v.map((b,i)=>(i?'L':'M')+cx_(i,n).toFixed(1)+' '+yW(b.kt).toFixed(1)).join(' ');
  const gl=v.map((b,i)=>(i?'L':'M')+cx_(i,n).toFixed(1)+' '+yW(b.gust).toFixed(1)).join(' ');
  const sa='M'+cx_(0,n).toFixed(1)+' '+(sTop+Hs)+' '+v.map((b,i)=>'L'+cx_(i,n).toFixed(1)+' '+yS(b.waveH??0).toFixed(1)).join(' ')+' L'+cx_(n-1,n).toFixed(1)+' '+(sTop+Hs)+' Z';
+ let tl='';
+ if(tideVals.length){
+  let open=false;
+  v.forEach((b,i)=>{if(b.tide==null){open=false;return}tl+=(open?'L':'M')+cx_(i,n).toFixed(1)+' '+yT(b.tide).toFixed(1)+' ';open=true});
+ }
+ // slack markers inside the visible span
+ const t0=v[0].dt, t1=v[n-1].dt;
+ const xAtTime=d=>CPAD+((d-t0)/(t1-t0))*(CW-CPAD-CRIGHT);
+ const te=state.tideEvents||{turns:[],peaks:[]};
+ const slack=(te.turns||[]).filter(e=>e.t>=t0&&e.t<=t1).map(e=>{
+  const x=xAtTime(e.t);
+  return '<circle cx="'+x.toFixed(1)+'" cy="'+yT(e.height).toFixed(1)+'" r="2.8" fill="#C79BE0"/>'
+   +'<text x="'+x.toFixed(1)+'" y="'+(yT(e.height)+(e.kind==='H'?-6:12)).toFixed(1)+'" fill="#C79BE0" font-size="9" font-family="monospace" text-anchor="middle">'+e.kind+'</text>';
+ }).join('');
+
  const grid=[10,20,30,40].filter(k=>k<=maxKt).map(k=>
   '<line x1="'+CPAD+'" x2="'+(CW-CRIGHT)+'" y1="'+yW(k).toFixed(1)+'" y2="'+yW(k).toFixed(1)+'" stroke="#204250" stroke-dasharray="2 4"/>'
   +'<text x="2" y="'+(yW(k)+4).toFixed(1)+'" fill="#6E8E9B" font-size="10" font-family="monospace">'+k+'</text>').join('');
- const ry=sTop+Hs+gap, cw=(CW-CPAD-CRIGHT)/n;
+ const ry=tTop+Ht+gap;
  const ribbon=v.map((b,i)=>'<rect x="'+(CPAD+i*cw).toFixed(1)+'" y="'+ry+'" width="'+Math.max(1,cw-1).toFixed(1)+'" height="'+Hr+'" fill="'+['#84C067','#E5A03A','#FF3E9A'][b.lvl]+'"'+((b.hour<6||b.hour>18)?' opacity="0.35"':'')+'/>').join('');
  const cx=cx_(state.cursor,n);
+
  document.getElementById('chartBox').innerHTML=
-  '<svg class="chart" viewBox="0 0 '+CW+' '+H+'" id="chartSvg" role="img" aria-label="Wind and sea, drag to scrub">'
-  +grid+'<line x1="'+CPAD+'" x2="'+(CW-CRIGHT)+'" y1="'+yW(t.windGo).toFixed(1)+'" y2="'+yW(t.windGo).toFixed(1)+'" stroke="#84C067"/>'
-  +band+'<path d="'+gl+'" fill="none" stroke="#7FB8C4" stroke-width="1" opacity="0.45" stroke-dasharray="3 3"/>'
+  '<svg class="chart" viewBox="0 0 '+CW+' '+H+'" id="chartSvg" role="img" aria-label="Wind, sea and tide. Drag to scrub.">'
+  +rain+grid
+  +'<line x1="'+CPAD+'" x2="'+(CW-CRIGHT)+'" y1="'+yW(t.windGo).toFixed(1)+'" y2="'+yW(t.windGo).toFixed(1)+'" stroke="#84C067"/>'
+  +band
+  +'<path d="'+gl+'" fill="none" stroke="#7FB8C4" stroke-width="1" opacity="0.45" stroke-dasharray="3 3"/>'
   +'<path d="'+wl+'" fill="none" stroke="#E8DCC0" stroke-width="1.8"/>'
   +'<path d="'+sa+'" fill="#7FB8C4" opacity="0.3"/>'
   +'<text x="2" y="'+(sTop+11)+'" fill="#6E8E9B" font-size="10" font-family="monospace">'+maxSea.toFixed(1)+'m</text>'
+  +(tl?'<path d="'+tl+'" fill="none" stroke="#C79BE0" stroke-width="1.4"/>':'')
+  +slack
+  +'<text x="2" y="'+(tTop+11)+'" fill="#6E8E9B" font-size="10" font-family="monospace">tide</text>'
   +ribbon+dayTicks(v,H,ry+Hr)
   +'<line x1="'+cx.toFixed(1)+'" x2="'+cx.toFixed(1)+'" y1="0" y2="'+(ry+Hr)+'" stroke="#E8DCC0" stroke-width="1.5"/>'
   +'<circle cx="'+cx.toFixed(1)+'" cy="'+yW(v[state.cursor].kt).toFixed(1)+'" r="3.5" fill="#E8DCC0"/></svg>';
  attachScrub(document.getElementById('chartSvg'),n);
 }
 
+function nextSlack(from){
+ const te=state.tideEvents; if(!te||!te.turns)return null;
+ return te.turns.find(e=>e.t>from)||null;
+}
 function drawReadout(){
  const b=state.series[state.cursor], q=bandAt(ensBands(),b.time), spot=SPOT();
+ const ns=nextSlack(b.dt);
+ const mins=ns?Math.round((ns.t-b.dt)/60000):null;
  document.getElementById('readout').innerHTML=
-  '<div class="big v'+b.lvl+'">'+fD.format(b.dt)+' '+String(b.hour).padStart(2,'0')+':00 · '+['go','marginal','no-go'][b.lvl]+'</div>'
+  '<div class="big v'+b.lvl+'">'+fD.format(b.dt)+' '+pad2(b.hour)+':00 · '+['go','marginal','no-go'][b.lvl]+'</div>'
   +'<div><span class="k">wind</span> '+Math.round(b.kt)+' kt '+compass(b.dir)+'</div>'
   +'<div><span class="k">gust</span> '+Math.round(b.gust)+' kt</div>'
   +'<div><span class="k">sea</span> '+(b.waveH!=null?b.waveH.toFixed(1)+' m / '+Math.round(b.waveP||0)+'s':'—')+'</div>'
-  +'<div><span class="k">swell</span> '+(b.swH!=null?b.swH.toFixed(1)+' m / '+Math.round(b.swP||0)+'s '+(b.swD!=null?compass(b.swD):''):'—')+'</div>'
+  +'<div><span class="k">rain</span> '+(b.rainP!=null?b.rainP+'%':'—')+(b.rainMm?' / '+b.rainMm.toFixed(1)+'mm':'')+'</div>'
   +'<div><span class="k">mslp</span> '+Math.round(b.mslp)+' hPa</div>'
-  +'<div><span class="k">tidal flow</span> <span style="color:var(--tide)">'+flowWord(b.fR)+(b.fDir?' '+b.fDir:'')+'</span></div>'
+  +'<div><span class="k">tide</span> '+(b.tide!=null?b.tide.toFixed(2)+' m':'—')+'</div>'
+  +'<div><span class="k">flow</span> <span style="color:var(--tide)">'+flowWord(b.fR)+(b.fDir?', '+(b.fDir==='flood'?'rising':'falling'):'')+'</span></div>'
+  +'<div><span class="k">next slack</span> <span style="color:var(--tide)">'+(ns?fT.format(ns.t)+' '+ns.kind+(mins!=null?' ('+Math.floor(mins/60)+'h'+pad2(mins%60)+')':''):'—')+'</span></div>'
   +'<div><span class="k">drift</span> '+(b.curV!=null?(b.curV*1.94384).toFixed(1)+' kt '+(b.curD!=null?compass(b.curD):''):'—')+'</div>'
   +'<div><span class="k">ensemble</span> '+(q?'±'+((q.hi-q.lo)/2).toFixed(0)+' kt / '+q.n+' members':'—')+'</div>'
-  +(b.barRisk?'<div class="warn">Bar warning: ebb running against '+(b.waveH||0).toFixed(1)+' m of swell. This is when it stands up. Get eyes on it before you commit.</div>':'')
-  +(spot.inshore?'<div class="warn" style="color:var(--dim)">Inshore mark. At 8 km grid spacing this cell also contains land, so the sea and swell figures are approximate. Wind is more dependable than wave height here.</div>':'');
+  +(b.barRisk?'<div class="warn">Bar warning: falling tide against '+(b.waveH||0).toFixed(1)+' m of sea. This is when it stands up. Get eyes on it before you commit.</div>':'')
+  +(spot.inshore?'<div class="warn" style="color:var(--dim)">Inshore mark. At 8 km grid spacing this cell also contains land, so sea and swell are approximate. Wind is more dependable here.</div>':'');
+}
+
+/* ---- swell rose + train breakdown ---- */
+function drawSwell(){
+ const b=state.series[state.cursor];
+ const R=90, C=93, S=186;
+ const maxH=Math.max(1.0,...b.trains.map(t=>t.h||0),(b.waveH||0));
+ const rings=[0.33,0.66,1].map(f=>'<circle cx="'+C+'" cy="'+C+'" r="'+(R*f).toFixed(1)+'" fill="none" stroke="#204250" stroke-dasharray="2 4"/>').join('');
+ const cards=[['N',0],['E',90],['S',180],['W',270]].map(([l,d])=>{
+  const a=(d-90)*Math.PI/180;
+  return '<text x="'+(C+Math.cos(a)*(R+9)).toFixed(1)+'" y="'+(C+Math.sin(a)*(R+9)+3.5).toFixed(1)+'" fill="#6E8E9B" font-size="10" font-family="monospace" text-anchor="middle">'+l+'</text>';
+ }).join('');
+ // wedges point toward where the train comes FROM, matching surf apps
+ const wedges=b.trains.map(t=>{
+  if(t.d==null)return '';
+  const len=R*Math.max(0.12,(t.h/maxH));
+  const a=(t.d-90)*Math.PI/180, w=0.13;
+  const p1=[C+Math.cos(a)*len,C+Math.sin(a)*len];
+  const p2=[C+Math.cos(a-w)*len*0.42,C+Math.sin(a-w)*len*0.42];
+  const p3=[C+Math.cos(a+w)*len*0.42,C+Math.sin(a+w)*len*0.42];
+  return '<polygon points="'+[p1,p2,p3].map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')+'" fill="'+t.col+'" opacity="0.9"/>';
+ }).join('');
+ document.getElementById('roseBox').innerHTML=
+  '<svg viewBox="0 0 '+S+' '+S+'" role="img" aria-label="Swell rose"><rect width="'+S+'" height="'+S+'" fill="#0D1E28"/>'
+  +rings+cards+wedges+'<circle cx="'+C+'" cy="'+C+'" r="2" fill="#E8DCC0"/>'
+  +'<text x="'+C+'" y="'+(S-5)+'" fill="#6E8E9B" font-size="9" font-family="monospace" text-anchor="middle">outer ring '+maxH.toFixed(1)+' m</text></svg>';
+
+ const rows=b.trains.length?b.trains.map(t=>
+  '<div class="train"><span class="tdot" style="background:'+t.col+'"></span>'
+  +'<span class="tn">'+t.label+'</span>'
+  +'<span class="tv">'+t.h.toFixed(1)+' m · '+Math.round(t.p||0)+'s · '+(t.d!=null?compass(t.d)+' '+Math.round(t.d)+'°':'—')+'</span></div>').join('')
+  :'<div class="train"><span class="tdot" style="background:#173441"></span><span class="tn">No partition data</span><span class="tv">—</span></div>';
+ document.getElementById('trains').innerHTML=rows
+  +'<div class="train"><span class="tdot" style="background:#E8DCC0"></span><span class="tn">Combined sea</span>'
+  +'<span class="tv">'+(b.waveH!=null?b.waveH.toFixed(1)+' m · '+Math.round(b.waveP||0)+'s · '+(b.waveD!=null?compass(b.waveD):'—'):'—')+'</span></div>';
+
+ const n=b.trains.length;
+ document.getElementById('swellNote').innerHTML=
+  state.data.partitions
+   ? (n>=2? n+' trains running. The combined figure sits between them and describes none of them well. Read the longest-period train for how it will feel on the exposed sides.'
+          : n===1? 'One train resolved at this hour, so the combined figure is a fair summary.'
+                 : 'No train exceeded 5 cm at this hour.')
+   : 'Secondary and tertiary partitions were not returned for this location, so only wind wave and primary swell are shown. That is a data limit, not a calm sea.';
 }
 
 function drawSpread(){
@@ -571,7 +754,7 @@ function drawSpread(){
  const ribbon=sp.map((p,i)=>'<rect x="'+(CPAD+i*cw).toFixed(1)+'" y="'+ry+'" width="'+Math.max(1,cw-1).toFixed(1)+'" height="'+Hr+'" fill="'+spreadCol(p.spread)+'"/>').join('');
  const cx=cx_(state.cursor,n);
  document.getElementById('modelChart').innerHTML=
-  '<svg class="chart" viewBox="0 0 '+CW+' '+H+'" id="spreadSvg" role="img" aria-label="Model agreement, drag to scrub">'
+  '<svg class="chart" viewBox="0 0 '+CW+' '+H+'" id="spreadSvg" role="img" aria-label="Model agreement. Drag to scrub.">'
   +grid+lines+ribbon+dayTicks(sp,H,ry+Hr)
   +'<line x1="'+cx.toFixed(1)+'" x2="'+cx.toFixed(1)+'" y1="0" y2="'+(ry+Hr)+'" stroke="#E8DCC0" stroke-width="1.5" opacity="0.8"/></svg>';
  attachScrub(document.getElementById('spreadSvg'),n);
@@ -582,43 +765,33 @@ function drawSpread(){
  const p=sp[state.cursor], now=p.spread;
  const wide=sp.filter(x=>x.spread!=null&&x.spread>8), fw=wide.length?wide[0]:null;
  document.getElementById('modelNote').innerHTML=
-  '<b style="color:var(--buff);font-weight:500">'+fD.format(p.dt)+' '+String(p.hour).padStart(2,'0')+':00</b> — '
+  '<b style="color:var(--buff);font-weight:500">'+fD.format(p.dt)+' '+pad2(p.hour)+':00</b> — '
   +(now==null?'only one model live, no spread to report.'
    :'<span class="agree '+spreadClass(now)+'">'+now.toFixed(0)+' kt spread ('+spreadClass(now)+')</span> across '+p.n+' models: '
     +p.vals.map(v=>MODELS.find(m=>m.id===v.id).label+' '+Math.round(v.kt)).join(', ')+' kt.')
-  +'<br>Ribbon under the lines is spread per block: green under 4 kt, amber to 8, magenta beyond. '
-  +(fw?'Agreement first breaks down around <b style="color:var(--magenta);font-weight:500">'+fD.format(fw.dt)+' '+String(fw.hour).padStart(2,'0')+':00</b>. Treat anything past that as provisional.'
-     :'No block in this range exceeds 8 kt of spread. The models are holding one solution throughout.')
-  +'<br>Models returning nothing are excluded rather than counted as calm.';
+  +'<br>'+(fw?'Agreement first breaks down around <b style="color:var(--magenta);font-weight:500">'+fD.format(fw.dt)+' '+pad2(fw.hour)+':00</b>. Treat anything past that as provisional.'
+     :'No block in this range exceeds 8 kt of spread. The models are holding one solution throughout.');
 }
 
-/* ---- Web Mercator chartlet ---- */
+/* ---- chartlet ---- */
 const TSZ=256;
 const mx=(lon,z)=>(lon+180)/360*TSZ*Math.pow(2,z);
 const my=(lat,z)=>{const r=lat*Math.PI/180;return (1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*TSZ*Math.pow(2,z)};
-
 function drawMap(){
  const t=state.series[state.cursor].time, spots=SPOTS();
- const pts=spots.map(s=>{
-  const ss=series(s.id,state.model), i=ss.findIndex(b=>b.time===t);
-  return {spot:s,b:ss[i>=0?i:0]};
- }).filter(p=>p.b);
+ const pts=spots.map(s=>{const ss=series(s.id,state.model),i=ss.findIndex(b=>b.time===t);return{spot:s,b:ss[i>=0?i:0]}}).filter(p=>p.b);
  const latSpan=Math.max(...spots.map(s=>s.lat))-Math.min(...spots.map(s=>s.lat));
  const lonSpan=Math.max(...spots.map(s=>s.lon))-Math.min(...spots.map(s=>s.lon));
  const padDeg=Math.max(0.045,Math.max(latSpan,lonSpan)*0.14);
  const latN=Math.max(...spots.map(s=>s.lat))+padDeg, latS=Math.min(...spots.map(s=>s.lat))-padDeg;
  const lonW=Math.min(...spots.map(s=>s.lon))-padDeg, lonE=Math.max(...spots.map(s=>s.lon))+padDeg;
-
  const W=CW,pad=8,maxH=540,targetW=W-pad*2;
- let z=12;
- for(let k=7;k<=14;k++){z=k;if(mx(lonE,k)-mx(lonW,k)>=targetW)break}
+ let z=12; for(let k=7;k<=14;k++){z=k;if(mx(lonE,k)-mx(lonW,k)>=targetW)break}
  const bw=mx(lonE,z)-mx(lonW,z), bh=my(latS,z)-my(latN,z);
  const scale=Math.min(targetW/bw,(maxH-pad*2)/bh);
  const H=Math.round(bh*scale)+pad*2;
  const offX=pad+(targetW-bw*scale)/2, offY=pad;
- const PX=l=>offX+(mx(l,z)-mx(lonW,z))*scale;
- const PY=l=>offY+(my(l,z)-my(latN,z))*scale;
-
+ const PX=l=>offX+(mx(l,z)-mx(lonW,z))*scale, PY=l=>offY+(my(l,z)-my(latN,z))*scale;
  let tiles='';
  if(state.basemap!=='none'){
   const base=TILES[state.basemap];
@@ -631,39 +804,35 @@ function drawMap(){
   }
  }
  const dim=state.basemap==='none'?'':'<rect width="'+W+'" height="'+H+'" fill="#0A1922" opacity="'+(state.basemap==='imagery'?0.34:0.2)+'"/>';
-
  const marks=pts.map(p=>{
   const cx=PX(p.spot.lon),cy=PY(p.spot.lat),b=p.b,sel=p.spot.id===state.spot,isBar=!!p.spot.bar;
   const col=['#84C067','#E5A03A','#FF3E9A'][b.lvl];
   const L=8+Math.min(32,b.kt*1.6), a=(((b.dir+180)%360)-90)*Math.PI/180;
+  const prim=b.trains.find(x=>x.label==='Primary')||b.trains[0];
   let sw='';
-  if(b.swD!=null&&b.swH!=null){
-   const sa=(((b.swD+180)%360)-90)*Math.PI/180, SL=8+Math.min(24,b.swH*14);
+  if(prim&&prim.d!=null){
+   const sa=(((prim.d+180)%360)-90)*Math.PI/180, SL=8+Math.min(24,prim.h*14);
    sw='<line x1="'+cx.toFixed(1)+'" y1="'+cy.toFixed(1)+'" x2="'+(cx+Math.cos(sa)*SL).toFixed(1)+'" y2="'+(cy+Math.sin(sa)*SL).toFixed(1)+'" stroke="#7FB8C4" stroke-width="1.6" stroke-dasharray="3 2"/>';
   }
   const ring=isBar
-   ? '<rect x="'+(cx-6).toFixed(1)+'" y="'+(cy-6).toFixed(1)+'" width="12" height="12" fill="none" stroke="'+(sel?'#E8DCC0':'#C79BE0')+'" stroke-width="'+(sel?2:1.6)+'" transform="rotate(45 '+cx.toFixed(1)+' '+cy.toFixed(1)+')"/>'
-   : '<circle cx="'+cx.toFixed(1)+'" cy="'+cy.toFixed(1)+'" r="'+(sel?7:5)+'" fill="none" stroke="'+(sel?'#E8DCC0':'#C6D8DE')+'" stroke-width="'+(sel?2:1.4)+'"/>';
+   ?'<rect x="'+(cx-6).toFixed(1)+'" y="'+(cy-6).toFixed(1)+'" width="12" height="12" fill="none" stroke="'+(sel?'#E8DCC0':'#C79BE0')+'" stroke-width="'+(sel?2:1.6)+'" transform="rotate(45 '+cx.toFixed(1)+' '+cy.toFixed(1)+')"/>'
+   :'<circle cx="'+cx.toFixed(1)+'" cy="'+cy.toFixed(1)+'" r="'+(sel?7:5)+'" fill="none" stroke="'+(sel?'#E8DCC0':'#C6D8DE')+'" stroke-width="'+(sel?2:1.4)+'"/>';
   const label=(y,fill,txt)=>
    '<text x="'+cx.toFixed(1)+'" y="'+y.toFixed(1)+'" fill="#0A1922" stroke="#0A1922" stroke-width="3" font-size="11.5" font-family="monospace" text-anchor="middle">'+txt+'</text>'
    +'<text x="'+cx.toFixed(1)+'" y="'+y.toFixed(1)+'" fill="'+fill+'" font-size="11.5" font-family="monospace" text-anchor="middle">'+txt+'</text>';
-  return sw
-   +'<line x1="'+cx.toFixed(1)+'" y1="'+cy.toFixed(1)+'" x2="'+(cx+Math.cos(a)*L).toFixed(1)+'" y2="'+(cy+Math.sin(a)*L).toFixed(1)+'" stroke="'+col+'" stroke-width="2.2"/>'
+  return sw+'<line x1="'+cx.toFixed(1)+'" y1="'+cy.toFixed(1)+'" x2="'+(cx+Math.cos(a)*L).toFixed(1)+'" y2="'+(cy+Math.sin(a)*L).toFixed(1)+'" stroke="'+col+'" stroke-width="2.2"/>'
    +'<circle cx="'+(cx+Math.cos(a)*L).toFixed(1)+'" cy="'+(cy+Math.sin(a)*L).toFixed(1)+'" r="2.8" fill="'+col+'"/>'
-   +ring+label(cy+21,sel?'#E8DCC0':(isBar?'#C79BE0':'#C6D8DE'),p.spot.short)
-   +label(cy+33,col,Math.round(b.kt)+'kt');
+   +ring+label(cy+21,sel?'#E8DCC0':(isBar?'#C79BE0':'#C6D8DE'),p.spot.short)+label(cy+33,col,Math.round(b.kt)+'kt');
  }).join('');
-
  const nmPx=(my(latN,z)-my(latN-10/60,z))*scale;
  const bar='<line x1="'+(pad+6)+'" x2="'+(pad+6+nmPx).toFixed(1)+'" y1="'+(H-14)+'" y2="'+(H-14)+'" stroke="#E8DCC0" stroke-width="2"/>'
   +'<text x="'+(pad+10+nmPx).toFixed(1)+'" y="'+(H-10)+'" fill="#E8DCC0" font-size="10.5" font-family="monospace">10 nm</text>';
-
  document.getElementById('mapBox').innerHTML=
   '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Chartlet"><rect width="'+W+'" height="'+H+'" fill="#0D1E28"/>'+tiles+dim+marks+bar+'</svg>';
  document.getElementById('mapLegend').innerHTML=
   '<span class="sw" style="background:#84C067"></span>solid arrow — wind, length by speed, pointing the way it blows<br>'
-  +'<span class="sw" style="background:#7FB8C4"></span>dashed arrow — swell, length by height<br>'
-  +'Circles are dive marks, lilac diamonds are bar entrances. Arrow colour is the verdict there. Drag either chart to move through time.';
+  +'<span class="sw" style="background:#7FB8C4"></span>dashed arrow — primary swell, pointing the way it travels<br>'
+  +'Circles are dive marks, lilac diamonds are bar entrances. Note the rose above uses the opposite convention and points at the source, matching surf apps.';
  document.getElementById('mapAttrib').textContent=
   state.basemap==='imagery'?'Imagery: Esri, Maxar, Earthstar Geographics and the GIS User Community'
   :state.basemap==='ocean'?'Bathymetry: Esri, GEBCO, NOAA, National Geographic and other contributors':'';
@@ -671,7 +840,7 @@ function drawMap(){
 
 function renderWindows(){
  const w=findWindows(state.series,REGION().minWindow), box=document.getElementById('windows');
- if(!w.length){box.innerHTML='<div class="no-window">Nothing over '+REGION().minWindow+' hours clears your thresholds in this range.<br>Loosen them below, or widen to 10 day.</div>';return}
+ if(!w.length){box.innerHTML='<div class="no-window">Nothing over '+REGION().minWindow+' hours clears your thresholds in this range.<br>Loosen them below, widen to 10 day, or check the seasonal panel.</div>';return}
  box.innerHTML=w.map(x=>{
   const dd=Math.floor(x.hours/24),hh=x.hours%24;
   return '<div class="win lvl'+x.worst+'"><div class="win-range">'
@@ -682,25 +851,154 @@ function renderWindows(){
 }
 const arrowSVG=d=>'<svg class="arrow" viewBox="0 0 24 24" aria-hidden="true"><g transform="rotate('+(((d+180)%360)).toFixed(0)+' 12 12)"><path d="M12 3 L17 15 L12 12.6 L7 15 Z"/></g></svg>';
 function renderDays(){
- const by={};
+ const by={}, te=state.tideEvents||{turns:[],peaks:[]};
  for(const b of state.series){const k=b.dt.toDateString();(by[k]=by[k]||[]).push(b)}
  document.getElementById('days').innerHTML=Object.keys(by).map(k=>{
   const bl=by[k], dl=bl.filter(b=>b.hour>=6&&b.hour<=18);
   const kts=(dl.length?dl:bl).map(b=>b.kt);
   const best=dl.length?Math.min(...dl.map(b=>b.lvl)):2;
-  const ribbon=bl.map(b=>'<div class="cell lvl'+b.lvl+((b.hour<6||b.hour>18)?' night':'')+'">'+String(b.hour).padStart(2,'0')+'</div>').join('');
-  const rows=bl.map(b=>
-   '<div class="row'+((b.hour<6||b.hour>18)?' is-night':'')+'">'
-   +'<span class="t">'+String(b.hour).padStart(2,'0')+':00</span>'+arrowSVG(b.dir)
+  const turns=(te.turns||[]).filter(e=>e.t.toDateString()===k);
+  const peaks=(te.peaks||[]).filter(e=>e.t.toDateString()===k);
+  const slackLine=turns.length
+   ? 'Slack '+turns.map(e=>fT.format(e.t)+' '+e.kind+' '+e.height.toFixed(1)+'m').join(' · ')
+     +(peaks.length?'<br><span class="pk">Peak run '+peaks.map(p=>fT.format(p.t)+' '+(p.dir==='flood'?'rising':'falling')).join(' · ')+'</span>':'')
+   : '';
+  const ribbon=bl.map(b=>'<div class="cell lvl'+b.lvl+((b.hour<6||b.hour>18)?' night':'')+'">'+pad2(b.hour)+'</div>').join('');
+  const rows=bl.map(b=>{
+   const prim=b.trains.find(x=>x.label==='Primary')||b.trains[0];
+   return '<div class="row'+((b.hour<6||b.hour>18)?' is-night':'')+'">'
+   +'<span class="t">'+pad2(b.hour)+':00</span>'+arrowSVG(b.dir)
    +'<span>'+Math.round(b.kt)+' kt '+compass(b.dir)+'<span class="sub"> g'+Math.round(b.gust)+'</span></span>'
    +'<span>'+(b.waveH!=null?b.waveH.toFixed(1)+' m<span class="sub"> '+Math.round(b.waveP||0)+'s</span>':'—')
-     +(b.swH!=null?'<span class="sub"> sw '+b.swH.toFixed(1)+'</span>':'')+'</span>'
-   +'<span class="cur">'+flowWord(b.fR)+(b.barRisk?' !':'')+'</span><span class="dot lvl'+b.lvl+'"></span></div>').join('');
+     +(prim?'<span class="sub"> '+prim.h.toFixed(1)+'/'+Math.round(prim.p||0)+'s '+(prim.d!=null?compass(prim.d):'')+'</span>':'')
+     +(b.trains.length>2?'<span class="sub" style="color:var(--tide)"> +'+(b.trains.length-2)+'</span>':'')+'</span>'
+   +'<span class="cur">'+flowWord(b.fR)+(b.barRisk?' !':'')+'</span><span class="dot lvl'+b.lvl+'"></span></div>';
+  }).join('');
   return '<div class="day"><div class="day-head"><div class="day-name">'+fD.format(bl[0].dt)+'</div>'
    +'<div class="day-sum">'+Math.round(Math.min(...kts))+'–'+Math.round(Math.max(...kts))+' kt daylight<br>'
    +['go','marginal','no-go'][best]+' at best</div></div>'
+   +(slackLine?'<div class="slackbar">'+slackLine+'</div>':'')
    +'<div class="ribbon">'+ribbon+'</div><div>'+rows+'</div></div>';
  }).join('');
+}
+
+/* ---------------- outlook: ERA5 climatology + EC46 sub-seasonal ---------------- */
+const archiveURL=(s,a,b)=>'https://archive-api.open-meteo.com/v1/archive?'+new URLSearchParams({
+ latitude:s.lat,longitude:s.lon,start_date:a,end_date:b,
+ daily:'wind_speed_10m_max,wind_speed_10m_mean',wind_speed_unit:'kn',timezone:TZ});
+const seasonalURL=s=>'https://seasonal-api.open-meteo.com/v1/seasonal?'+new URLSearchParams({
+ latitude:s.lat,longitude:s.lon,daily:'wind_speed_10m_max',
+ wind_speed_unit:'kn',timezone:TZ,forecast_days:46});
+
+function pct(sorted,p){return sorted[Math.min(sorted.length-1,Math.max(0,Math.floor(p*sorted.length)))]}
+
+async function loadOutlook(){
+ if(state.outlookLoading||state.outlook)return;
+ state.outlookLoading=true;
+ const box=document.getElementById('outlookBox');
+ box.innerHTML='<div class="skel" style="height:120px"></div><div class="otext">Pulling fifteen years of reanalysis and the six-week run…</div>';
+ const s=SPOT(), today=new Date();
+ const end=new Date(today); end.setDate(end.getDate()-10);
+ const start=new Date(end.getFullYear()-15,0,1);
+ const [arc,sea]=await Promise.all([
+  settle(getJSON(archiveURL(s,iso(start),iso(end)))),
+  settle(getJSON(seasonalURL(s)))
+ ]);
+ state.outlookLoading=false;
+ if(!arc.ok){box.innerHTML='<div class="otext bad">Climatology unavailable: '+arc.error+'</div>';return}
+ state.outlook={arc:arc.value[0], sea:sea.ok?sea.value[0]:null, seaErr:sea.ok?null:sea.error};
+ drawOutlook();
+}
+
+function drawOutlook(){
+ const o=state.outlook, d=o.arc.daily;
+ const byMonth=Array.from({length:12},()=>[]);
+ const windowVals=[];
+ const target=new Date(); const tDoy=(dt)=>{const s=new Date(dt.getFullYear(),0,0);return Math.floor((dt-s)/86400000)};
+ const tgt=tDoy(target);
+ d.time.forEach((t,i)=>{
+  const v=d.wind_speed_10m_max[i]; if(v==null)return;
+  const dt=new Date(t); byMonth[dt.getMonth()].push(v);
+  let diff=Math.abs(tDoy(dt)-tgt); if(diff>182)diff=365-diff;
+  if(diff<=7)windowVals.push(v);
+ });
+ const med=a=>{const s=a.slice().sort((x,y)=>x-y);return s.length?pct(s,0.5):null};
+ const stats=byMonth.map(a=>{const s=a.slice().sort((x,y)=>x-y);return s.length?{p25:pct(s,0.25),p50:pct(s,0.5),p75:pct(s,0.75)}:null});
+
+ const W=660,H=170,pad=26,bw=(W-pad-10)/12;
+ const maxV=Math.max(...stats.filter(Boolean).map(s=>s.p75))*1.1;
+ const y=v=>H-30-(v/maxV)*(H-52);
+ const nowM=new Date().getMonth();
+ const bars=stats.map((s,i)=>{
+  if(!s)return '';
+  const x=pad+i*bw, cx=x+bw/2, hi=y(s.p75), lo=y(s.p25);
+  const on=i===nowM;
+  return '<line x1="'+cx.toFixed(1)+'" x2="'+cx.toFixed(1)+'" y1="'+hi.toFixed(1)+'" y2="'+lo.toFixed(1)+'" stroke="'+(on?'#E8DCC0':'#204250')+'" stroke-width="'+(on?3:6)+'" opacity="'+(on?1:0.85)+'"/>'
+   +'<circle cx="'+cx.toFixed(1)+'" cy="'+y(s.p50).toFixed(1)+'" r="'+(on?4:3)+'" fill="'+(on?'#84C067':'#7FB8C4')+'"/>'
+   +'<text x="'+cx.toFixed(1)+'" y="'+(H-14)+'" fill="'+(on?'#E8DCC0':'#6E8E9B')+'" font-size="10" font-family="monospace" text-anchor="middle">'+MONTHS[i]+'</text>';
+ }).join('');
+ const grid=[10,20,30].filter(v=>v<=maxV).map(v=>
+  '<line x1="'+pad+'" x2="'+(W-10)+'" y1="'+y(v).toFixed(1)+'" y2="'+y(v).toFixed(1)+'" stroke="#204250" stroke-dasharray="2 4"/>'
+  +'<text x="2" y="'+(y(v)+4).toFixed(1)+'" fill="#6E8E9B" font-size="10" font-family="monospace">'+v+'</text>').join('');
+
+ const sortedWin=windowVals.slice().sort((a,b)=>a-b);
+ const fMean=state.series.length?state.series.reduce((s,b)=>s+b.kt,0)/state.series.length:null;
+ // where does the forecast period sit against this fortnight historically
+ let percentile=null;
+ if(fMean!=null&&sortedWin.length){
+  const below=sortedWin.filter(v=>v<fMean*1.25).length; // crude bias allowance for ERA5 daily max vs 3-hourly mean
+  percentile=Math.round(100*below/sortedWin.length);
+ }
+ const calmest=stats.map((s,i)=>s?{i,v:s.p50}:null).filter(Boolean).sort((a,b)=>a.v-b.v).slice(0,3).map(x=>MONTHS[x.i]);
+ const windiest=stats.map((s,i)=>s?{i,v:s.p50}:null).filter(Boolean).sort((a,b)=>b.v-a.v).slice(0,2).map(x=>MONTHS[x.i]);
+
+ // EC46 weekly means
+ let seaBlock='';
+ if(o.sea&&o.sea.daily&&o.sea.daily.time){
+  const sd=o.sea.daily, keys=Object.keys(sd).filter(k=>k.startsWith('wind_speed_10m_max'));
+  const weeks=[];
+  for(let w=0;w<6;w++){
+   const vals=[];
+   for(let dI=w*7;dI<(w+1)*7&&dI<sd.time.length;dI++){
+    keys.forEach(k=>{const v=sd[k][dI];if(typeof v==='number')vals.push(v)});
+   }
+   if(vals.length){const s=vals.slice().sort((a,b)=>a-b);weeks.push({w,p25:pct(s,0.25),p50:pct(s,0.5),p75:pct(s,0.75),start:new Date(sd.time[w*7])})}
+  }
+  if(weeks.length){
+   const norm=stats[nowM]?stats[nowM].p50:null;
+   const WW=660,WH=120,wp=26,cw=(WW-wp-10)/weeks.length;
+   const mv=Math.max(...weeks.map(x=>x.p75),norm||0)*1.15;
+   const wy=v=>WH-24-(v/mv)*(WH-44);
+   const wbars=weeks.map((x,i)=>{
+    const cx=wp+i*cw+cw/2;
+    return '<line x1="'+cx.toFixed(1)+'" x2="'+cx.toFixed(1)+'" y1="'+wy(x.p75).toFixed(1)+'" y2="'+wy(x.p25).toFixed(1)+'" stroke="#204250" stroke-width="6"/>'
+     +'<circle cx="'+cx.toFixed(1)+'" cy="'+wy(x.p50).toFixed(1)+'" r="3.5" fill="'+(norm&&x.p50<norm?'#84C067':'#E5A03A')+'"/>'
+     +'<text x="'+cx.toFixed(1)+'" y="'+(WH-8)+'" fill="#6E8E9B" font-size="9.5" font-family="monospace" text-anchor="middle">'+fD.format(x.start).replace(',','')+'</text>';
+   }).join('');
+   seaBlock='<div class="panel-label" style="margin-top:22px">Six weeks ahead, ECMWF EC46</div>'
+    +'<svg viewBox="0 0 '+WW+' '+WH+'" role="img" aria-label="Six week outlook">'
+    +(norm?'<line x1="'+wp+'" x2="'+(WW-10)+'" y1="'+wy(norm).toFixed(1)+'" y2="'+wy(norm).toFixed(1)+'" stroke="#C79BE0" stroke-dasharray="4 3"/>'
+      +'<text x="2" y="'+(wy(norm)+4).toFixed(1)+'" fill="#C79BE0" font-size="10" font-family="monospace">'+norm.toFixed(0)+'</text>':'')
+    +wbars+'</svg>'
+    +'<div class="otext">Weekly ensemble spread of daily maximum wind. Lilac dashes are the '+MONTHS[nowM]+' norm from ERA5. '
+    +'Green dots sit under the norm, amber above. Not bias-corrected, so read the shape rather than the values.</div>';
+  }
+ } else if(o.seaErr){
+  seaBlock='<div class="otext">Six-week run unavailable: '+o.seaErr+'</div>';
+ }
+
+ document.getElementById('outlookBox').innerHTML=
+  '<div class="panel-label">Fifteen-year norms at '+SPOT().name+'</div>'
+  +'<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Monthly wind climatology">'+grid+bars+'</svg>'
+  +'<div class="otext">Bars are the 25th to 75th percentile of daily maximum wind by month, dot is the median. '
+  +'Current month picked out in cream.<br>'
+  +'Calmest historically: <b>'+calmest.join(', ')+'</b>. Windiest: <b>'+windiest.join(', ')+'</b>.<br>'
+  +(sortedWin.length?'For this fortnight specifically, median daily max is <b>'+med(windowVals).toFixed(0)+' kt</b>, '
+    +'with a quarter of days under <b>'+pct(sortedWin,0.25).toFixed(0)+' kt</b> and a quarter over <b>'+pct(sortedWin,0.75).toFixed(0)+' kt</b>, across '+sortedWin.length+' days of record.':'')
+  +(percentile!=null?'<br>The current forecast period averages <b>'+fMean.toFixed(0)+' kt</b>, which lands around the <b class="'+(percentile<45?'good':percentile>65?'bad':'')+'">'+percentile+'th percentile</b> for this time of year. '
+    +(percentile<45?'Calmer than typical, so this is a window worth taking.':percentile>65?'Windier than typical. Waiting has a reasonable chance of finding better.':'About normal for the season.'):'')
+  +'<br><br>ERA5 reads at 9 to 25 km and daily maximum runs higher than a 3-hourly point forecast, so trust the ranking more than the raw numbers.</div>'
+  +seaBlock;
 }
 
 /* ---- chips ---- */
@@ -715,15 +1013,14 @@ function buildRegionChips(){
  chipRow(document.getElementById('regions'),REGIONS.map(r=>({id:r.id,label:r.label})),state.region,id=>{
   state.region=id;store.set('region',id);
   state.spot=SPOTS()[0].id;store.set('spot',state.spot);
+  state.outlook=null;
   buildRegionChips();buildSpotChips();fillThresholdInputs();load();
  },null,'region');
  document.getElementById('regionNote').textContent=REGION().note+' BoM: '+REGION().bom+'.';
 }
 function buildSpotChips(){
  chipRow(document.getElementById('reefs'),SPOTS().map(s=>({id:s.id,label:s.name,bar:s.bar})),state.spot,id=>{
-  state.spot=id;store.set('spot',id);buildSpotChips();
-  // ensemble is fetched per location, so a change means a refetch
-  load();
+  state.spot=id;store.set('spot',id);state.outlook=null;buildSpotChips();load();
  });
  const s=SPOT();
  document.getElementById('reefNote').innerHTML=(s.bar?'<b>Bar entrance. </b>':'')+s.note;
@@ -754,7 +1051,10 @@ Object.entries(IN).forEach(([id,key])=>{
   if(state.data)render();
  });
 });
-document.getElementById('refresh').addEventListener('click',load);
+document.getElementById('outlookDetails').addEventListener('toggle',e=>{
+ if(e.target.open&&state.data)loadOutlook();
+});
+document.getElementById('refresh').addEventListener('click',()=>{state.outlook=null;load()});
 document.addEventListener('visibilitychange',()=>{
  if(!document.hidden&&state.data&&(Date.now()-state.data.fetchedAt)>30*60*1000)load();
 });
