@@ -73,6 +73,8 @@ body{background:var(--ink);color:var(--buff);
 .ks.band{background:linear-gradient(90deg,#020A10 0 30%,#E5A03A 30% 50%,transparent 50% 100%);
   border:1px solid var(--hairline)}
 .ks.band2{background:rgba(95,217,122,.22);border:1px solid #5FD97A}
+.ks.stacksw{background:linear-gradient(180deg,#EBD9A8 0 25%,#D4A8F0 25% 50%,#8FCEDC 50% 75%,#3E6E80 75%)}
+.ks.chipsw{background:var(--ink);border:1px solid var(--hairline);border-left:3px solid var(--sev0)}
 .ks.arrowsw{display:flex;align-items:center;justify-content:center}
 .ks.arrowsw svg{width:16px;height:10px;display:block}
 
@@ -350,10 +352,10 @@ const DIRS=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','
 const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 const TRAINS=[
- {p:'wind_wave',            label:'Wind wave', col:'#E5A03A'},
- {p:'swell_wave',           label:'Primary',   col:'#7FB8C4'},
- {p:'secondary_swell_wave', label:'Secondary', col:'#C79BE0'},
- {p:'tertiary_swell_wave',  label:'Tertiary',  col:'#84C067'}
+ {p:'wind_wave',            label:'Wind wave', col:'#3E6E80'},
+ {p:'swell_wave',           label:'Primary',   col:'#8FCEDC'},
+ {p:'secondary_swell_wave', label:'Secondary', col:'#D4A8F0'},
+ {p:'tertiary_swell_wave',  label:'Tertiary',  col:'#EBD9A8'}
 ];
 const MARINE_BASE=['wave_height','wave_period','wave_direction','sea_level_height_msl','ocean_current_velocity','ocean_current_direction'];
 const MARINE_TRAINS=[];TRAINS.forEach(t=>MARINE_TRAINS.push(t.p+'_height',t.p+'_period',t.p+'_direction'));
@@ -367,12 +369,14 @@ const LAYERS=[
  {id:'prev1',   label:'Run −1d',     col:'#FF7A9E', style:'dash', track:'wind',   on:false},
  {id:'prev3',   label:'Run −3d',     col:'#84C067', style:'dash', track:'wind',   on:false},
  {id:'sea',     label:'Sea height',  col:'#7FB8C4', style:'fill', track:'sea',    on:true},
- {id:'swell',   label:'Primary swell',col:'#C79BE0',style:'line', track:'sea',    on:false},
+ {id:'stack',   label:'Sea breakdown',col:'#8FCEDC',style:'stack',track:'sea',    on:true},
+ {id:'swell',   label:'Primary swell',col:'#D4A8F0',style:'line', track:'sea',    on:false},
  {id:'tide',    label:'Tide',        col:'#C79BE0', style:'line', track:'tide',   on:true},
  {id:'temp',    label:'Temperature', col:'#E5A03A', style:'line', track:'temp',   on:false},
  {id:'arrows',  label:'Direction',   col:'#E8DCC0', style:'arrow',track:null,     on:true},
  {id:'daylight',label:'Day / night', col:'#FFA83A', style:'band', track:null,     on:true},
  {id:'window',  label:'Best window', col:'#5FD97A', style:'band2',track:null,     on:true},
+ {id:'label',   label:'Cursor chip', col:'#F2E9D2', style:'chip', track:null,     on:true},
  {id:'verdict', label:'Verdict',     col:'multi',   style:'bar',  track:'ribbon', on:true}
 ];
 const TRACKH={wind:196,sea:96,tide:92,temp:70,ribbon:22};
@@ -699,6 +703,42 @@ function dirArrows(v,n,yFn,dirFn,colFn,step,size){
  }
  return s;
 }
+/* Floating chip that rides the scrub line so you never look away from the chart. */
+const LBLW=134, LBLH=56;
+function labelLines(b){
+ return [
+  fD.format(b.dt).replace(',','').toUpperCase()+' '+pad2(b.hour)+':00',
+  Math.round(b.kt)+' kt '+compass(b.dir)+' g'+Math.round(b.gust),
+  (b.waveH!=null?b.waveH.toFixed(1)+'m '+Math.round(b.waveP||0)+'s':'no sea')
+   +(b.tide!=null?'  tide '+b.tide.toFixed(1)+'m':'')
+ ];
+}
+function labelX(x){
+ // flip to the left of the cursor when it would run off the right edge
+ return (x+10+LBLW>VBW-CRIGHT)?x-10-LBLW:x+10;
+}
+function cursorLabel(b,x){
+ const L=labelLines(b), col=[SEV[0],SEV[2],SEV[3]][b.lvl];
+ return '<g id="curLabel" transform="translate('+labelX(x).toFixed(1)+' 4)">'
+  +'<rect width="'+LBLW+'" height="'+LBLH+'" rx="3" fill="#08161E" opacity="0.92"/>'
+  +'<rect width="'+LBLW+'" height="'+LBLH+'" rx="3" fill="none" stroke="#2C5A6E"/>'
+  +'<rect id="curLabelBar" width="3.5" height="'+LBLH+'" rx="1.5" fill="'+col+'"/>'
+  +'<text id="curLabelA" x="10" y="17" fill="#8AA6B2" font-size="10.5" font-family="monospace">'+L[0]+'</text>'
+  +'<text id="curLabelB" x="10" y="34" fill="#F2E9D2" font-size="13" font-family="monospace">'+L[1]+'</text>'
+  +'<text id="curLabelC" x="10" y="49" fill="#8FCEDC" font-size="11" font-family="monospace">'+L[2]+'</text>'
+  +'</g>';
+}
+function updateCursorLabel(b,x){
+ const g=document.getElementById('curLabel'); if(!g)return;
+ g.setAttribute('transform','translate('+labelX(x).toFixed(1)+' 4)');
+ const L=labelLines(b);
+ ['curLabelA','curLabelB','curLabelC'].forEach((id,i)=>{
+  const el=document.getElementById(id); if(el)el.textContent=L[i];
+ });
+ const bar=document.getElementById('curLabelBar');
+ if(bar)bar.setAttribute('fill',[SEV[0],SEV[2],SEV[3]][b.lvl]);
+}
+
 /* Horizontal severity zones behind the wind track: read height as risk. */
 function windZones(t,yW,maxKt){
  const mid=(t.windGo+t.windNo)/2;
@@ -742,6 +782,7 @@ function moveCursor(n){
  });
  const dot=document.getElementById('curDot');
  if(dot&&state.yW){dot.setAttribute('cx',x.toFixed(1));dot.setAttribute('cy',state.yW(v[n].kt).toFixed(1))}
+ updateCursorLabel(v[n],x);
  drawReadout(); drawSwell(); drawMap(); drawSpreadNote();
 }
 function attachScrub(svg,n){
@@ -778,7 +819,7 @@ function drawChart(){
  const v=state.chartSeries, n=v.length, t=thresholds(), eb=ensBands(), gap=8;
  const need={
   wind:['wind','gust','ens','rain','past','prev1','prev3'].some(on),
-  sea:['sea','swell'].some(on), tide:on('tide'), temp:on('temp'), ribbon:on('verdict')
+  sea:['sea','swell','stack'].some(on), tide:on('tide'), temp:on('temp'), ribbon:on('verdict')
  };
  const order=['wind','sea','tide','temp','ribbon'].filter(k=>need[k]);
  if(!order.length){document.getElementById('chartBox').innerHTML='<div class="sublabel">All layers switched off.</div>';return}
@@ -856,7 +897,28 @@ function drawChart(){
   }
  }
  if(need.sea){
-  if(on('sea'))out+='<path d="M'+cx_(0,n).toFixed(1)+' '+(top.sea+TRACKH.sea)+' '
+  if(on('stack')){
+   /* Significant wave heights add as energy, not linearly: two 1 m trains make a
+      1.4 m sea. So share out the combined height by each train's energy and the
+      band thicknesses read as "how much of this sea is that train". */
+   const cum=v.map(b=>{
+    const parts=TRAINS.map(tr=>{const x=b.trains.find(z=>z.label===tr.label);return x&&x.h?x.h:0});
+    const E=parts.reduce((s,h)=>s+h*h,0);
+    if(E<=0)return parts.map(()=>0);
+    const total=b.waveH!=null?b.waveH:Math.sqrt(E);
+    let acc=0;
+    return parts.map(h=>{acc+=(h*h/E)*total;return acc});
+   });
+   const base=top.sea+TRACKH.sea;
+   for(let ci=TRAINS.length-1;ci>=0;ci--){
+    if(!v.some(( _,i)=>cum[i][ci]>0.001))continue;
+    let d='M'+cx_(0,n).toFixed(1)+' '+base;
+    v.forEach((b,i)=>{d+='L'+cx_(i,n).toFixed(1)+' '+yS(cum[i][ci]).toFixed(1)});
+    d+='L'+cx_(n-1,n).toFixed(1)+' '+base+' Z';
+    out+='<path d="'+d+'" fill="'+TRAINS[ci].col+'" opacity="0.78"/>';
+   }
+   out+='<path d="'+path(b=>b.waveH,yS)+'" fill="none" stroke="#F2E9D2" stroke-width="1.4" opacity="0.65"/>';
+  } else if(on('sea'))out+='<path d="M'+cx_(0,n).toFixed(1)+' '+(top.sea+TRACKH.sea)+' '
    +v.map((b,i)=>'L'+cx_(i,n).toFixed(1)+' '+yS(b.waveH??0).toFixed(1)).join(' ')
    +' L'+cx_(n-1,n).toFixed(1)+' '+(top.sea+TRACKH.sea)+' Z" fill="#8FCEDC" opacity="0.34"/>';
   if(on('swell'))out+='<path d="'+path(b=>{const p=b.trains.find(x=>x.label==='Primary');return p?p.h:null},yS)+'" fill="none" stroke="#D4A8F0" stroke-width="1.8"/>';
@@ -907,6 +969,7 @@ function drawChart(){
  state.yW=need.wind?yW:null;
  out+='<line id="curLine" x1="'+cx.toFixed(1)+'" x2="'+cx.toFixed(1)+'" y1="0" y2="'+bottom+'" stroke="#F2E9D2" stroke-width="2"/>';
  if(need.wind)out+='<circle id="curDot" cx="'+cx.toFixed(1)+'" cy="'+yW(v[state.cursor].kt).toFixed(1)+'" r="5" fill="#F2E9D2" stroke="#08161E" stroke-width="1.5"/>';
+ if(on('label'))out+=cursorLabel(v[state.cursor],cx);
 
  const pctW=(100*(state.chartSeries.length/8)/state.span).toFixed(1);
  document.getElementById('chartBox').innerHTML=
@@ -922,7 +985,8 @@ function buildKey(){
   if(id==='prev1'||id==='prev3')return !!(state.data.prev&&state.data.prev[0]&&state.data.prev[0].hourly&&state.data.prev[0].hourly['wind_speed_10m_'+(id==='prev1'?'previous_day1':'previous_day3')]);
   if(id==='rain'||id==='temp')return !!state.data.cond;
   if(id==='daylight')return !!(state.data.cond&&state.data.cond[0]&&state.data.cond[0].daily&&state.data.cond[0].daily.sunrise);
-  if(id==='window')return true;
+  if(id==='window'||id==='label')return true;
+  if(id==='stack')return !!state.data.marine;
   if(id==='sea'||id==='swell'||id==='tide')return !!state.data.marine;
   return true;
  };
@@ -931,6 +995,8 @@ function buildKey(){
   const sw=l.col==='multi'?'<span class="ks multi"></span>'
    :l.style==='band'?'<span class="ks band"></span>'
    :l.style==='band2'?'<span class="ks band2"></span>'
+   :l.style==='stack'?'<span class="ks stacksw"></span>'
+   :l.style==='chip'?'<span class="ks chipsw"></span>'
    :l.style==='arrow'?'<span class="ks arrowsw"><svg viewBox="0 0 16 10"><path d="M11 5 L4 8 L5.6 5 L4 2 Z" fill="'+l.col+'"/></svg></span>'
    :l.style==='line'?'<span class="ks line" style="border-color:'+l.col+'"></span>'
    :l.style==='dash'?'<span class="ks dash" style="border-color:'+l.col+'"></span>'
