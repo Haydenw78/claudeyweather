@@ -82,7 +82,7 @@ body{background:var(--ink);color:var(--buff);
 .panel-label{font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--shoal);font-weight:500;margin-bottom:4px}
 .sublabel{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim);line-height:1.6;margin-bottom:12px}
 .panel svg{width:100%;display:block}
-.scroller{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;
+.scroller{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;
   scrollbar-width:thin;scrollbar-color:var(--ink-3) transparent}
 .scroller::-webkit-scrollbar{height:5px}
 .scroller::-webkit-scrollbar-thumb{background:var(--ink-3);border-radius:3px}
@@ -342,7 +342,8 @@ const MODELS=[
  {id:'icon_seamless',label:'ICON',col:'#7FB8C4'},{id:'gem_seamless',label:'GEM',col:'#C79BE0'},
  {id:'bom_access_global',label:'BoM',col:'#9FD48A'}
 ];
-const SPANS=[{id:'2',label:'2 days'},{id:'3',label:'3 days'},{id:'5',label:'5 days'},{id:'10',label:'10 days'}];
+const SPANS=[{id:'1',label:'1 day'},{id:'2',label:'2 days'},{id:'3',label:'3 days'},{id:'5',label:'5 days'},{id:'13',label:'All'}];
+const MINSPAN=0.6, MAXSPAN=13;
 const BASEMAPS=[{id:'imagery',label:'Satellite'},{id:'ocean',label:'Bathymetry'},{id:'none',label:'None'}];
 const TILES={
  imagery:'https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/',
@@ -405,11 +406,11 @@ let state={
  region:store.get('region')||'capricorn',
  spot:store.get('spot')||'sykes',
  model:store.get('model')||'ecmwf_ifs025',
- span:parseInt(store.get('span')||'5',10),
+ span:Math.max(MINSPAN,Math.min(MAXSPAN,parseFloat(store.get('span')||'3'))),
  basemap:store.get('basemap')||'imagery',
  layers:loadLayers(),
  cursor:0, data:null, modelStatus:{}, series:null, chartSeries:null,
- nowIndex:0, scrollLeft:null, cache:{}, tideEvents:null, outlook:null, outlookLoading:false
+ nowIndex:0, scrollLeft:null, pinching:false, cache:{}, tideEvents:null, outlook:null, outlookLoading:false
 };
 function loadLayers(){
  const d={};LAYERS.forEach(l=>d[l.id]=l.on);
@@ -759,8 +760,9 @@ function render(){
  VBW=Math.round(CW*(state.chartSeries.length/8)/state.span);
  if(state.cursor<0||state.cursor>=state.chartSeries.length)state.cursor=state.nowIndex;
  state.tideEvents=tideEvents(state.spot);
+ ensureShells();
  drawChart(); drawSevKey(); drawReadout(); drawSwell(); drawSpread(); drawMap();
- renderWindows(); renderDays(); wireScroll();
+ renderWindows(); renderDays(); restoreScroll();
  const d=state.data,m=MODELS.find(x=>x.id===state.model),r=REGION();
  document.getElementById('regionEyebrow').textContent=r.label;
  document.getElementById('stamp').innerHTML='<b>'+m.label+'</b> · '+fT.format(d.fetchedAt)+' '+fD.format(d.fetchedAt)
@@ -785,29 +787,100 @@ function moveCursor(n){
  updateCursorLabel(v[n],x);
  drawReadout(); drawSwell(); drawMap(); drawSpreadNote();
 }
-function attachScrub(svg,n){
+function attachScrub(svg){
  const move=ev=>{
+  const n=state.chartSeries.length; if(!n)return;
   const r=svg.getBoundingClientRect();
   const px=(ev.clientX-r.left)/r.width*VBW;
   const i=Math.round(((px-CPAD)/(VBW-CPAD-CRIGHT))*(n-1));
   moveCursor(Math.max(0,Math.min(n-1,i)));
  };
- svg.addEventListener('pointerdown',e=>{svg.setPointerCapture(e.pointerId);move(e)});
- svg.addEventListener('pointermove',e=>{if(e.buttons)move(e)});
+ svg.addEventListener('pointerdown',e=>{
+  if(e.pointerType==='touch'&&state.pinching)return;
+  svg.setPointerCapture(e.pointerId);move(e);
+ });
+ svg.addEventListener('pointermove',e=>{if(e.buttons&&!state.pinching)move(e)});
 }
-/* keep the two charts locked together and remember where you were */
-function wireScroll(){
+
+/* Pinch to zoom. Redrawing is coalesced into one frame and the point under
+   your fingers is pinned, so the chart grows from where you are looking. */
+let zoomRAF=null, pinch={d0:null,span0:null,frac:null,screenX:0};
+function applyZoom(){
+ if(zoomRAF)return;
+ zoomRAF=requestAnimationFrame(()=>{
+  zoomRAF=null;
+  VBW=Math.round(CW*(state.chartSeries.length/8)/state.span);
+  drawChart(); drawSpread();
+  const a=document.getElementById('chartScroll'), b=document.getElementById('spreadScroll');
+  if(a&&pinch.frac!=null){
+   const x=Math.max(0,Math.min(a.scrollWidth-a.clientWidth, pinch.frac*a.scrollWidth-pinch.screenX));
+   a.scrollLeft=x; if(b)b.scrollLeft=x; state.scrollLeft=x;
+  }
+ });
+}
+function setSpan(next,commit){
+ const v=Math.max(MINSPAN,Math.min(MAXSPAN,next));
+ if(Math.abs(v-state.span)/state.span<0.015&&!commit)return;
+ state.span=v;
+ applyZoom();
+ if(commit){store.set('span',String(v));buildSpanChips()}
+}
+function attachPinch(el){
+ const dist=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
+ const focal=e=>{
+  const r=el.getBoundingClientRect();
+  const mid=(e.touches[0].clientX+e.touches[1].clientX)/2;
+  pinch.screenX=mid-r.left;
+  pinch.frac=(el.scrollLeft+pinch.screenX)/Math.max(1,el.scrollWidth);
+ };
+ el.addEventListener('touchstart',e=>{
+  if(e.touches.length!==2)return;
+  state.pinching=true; pinch.d0=dist(e.touches); pinch.span0=state.span; focal(e);
+ },{passive:true});
+ el.addEventListener('touchmove',e=>{
+  if(e.touches.length!==2||pinch.d0==null)return;
+  e.preventDefault();
+  setSpan(pinch.span0/(dist(e.touches)/pinch.d0),false);
+ },{passive:false});
+ const end=()=>{
+  if(pinch.d0==null)return;
+  pinch.d0=null; state.pinching=false;
+  store.set('span',String(state.span)); buildSpanChips();
+  setTimeout(()=>{pinch.frac=null},60);
+ };
+ el.addEventListener('touchend',end); el.addEventListener('touchcancel',end);
+ // trackpad and mouse: ctrl or cmd plus wheel
+ el.addEventListener('wheel',e=>{
+  if(!e.ctrlKey&&!e.metaKey)return;
+  e.preventDefault();
+  const r=el.getBoundingClientRect();
+  pinch.screenX=e.clientX-r.left;
+  pinch.frac=(el.scrollLeft+pinch.screenX)/Math.max(1,el.scrollWidth);
+  setSpan(state.span*(1+e.deltaY*0.0022),true);
+ },{passive:false});
+}
+
+function ensureShells(){
+ if(document.getElementById('chartSvg'))return;
+ document.getElementById('chartBox').innerHTML=
+  '<div class="scroller" id="chartScroll"><svg class="chart" id="chartSvg" role="img" aria-label="Conditions. Scroll, pinch to zoom, drag to scrub."></svg></div>'
+  +'<div class="scrollhint" id="chartHint"></div>';
+ document.getElementById('modelChart').innerHTML=
+  '<div class="scroller" id="spreadScroll"><svg class="chart" id="spreadSvg" role="img" aria-label="Model agreement."></svg></div>';
+ attachScrub(document.getElementById('chartSvg'));
+ attachScrub(document.getElementById('spreadSvg'));
+ attachPinch(document.getElementById('chartScroll'));
+ attachPinch(document.getElementById('spreadScroll'));
+ const a=document.getElementById('chartScroll'), b=document.getElementById('spreadScroll');
+ let lock=false;
+ const mirror=(src,dst)=>()=>{if(lock)return;lock=true;dst.scrollLeft=src.scrollLeft;state.scrollLeft=src.scrollLeft;lock=false};
+ a.addEventListener('scroll',mirror(a,b)); b.addEventListener('scroll',mirror(b,a));
+}
+function restoreScroll(){
  const a=document.getElementById('chartScroll'), b=document.getElementById('spreadScroll');
  if(!a)return;
- let lock=false;
- const mirror=(src,dst)=>()=>{
-  if(lock)return; lock=true;
-  if(dst)dst.scrollLeft=src.scrollLeft;
-  state.scrollLeft=src.scrollLeft; lock=false;
- };
- a.onscroll=mirror(a,b); if(b)b.onscroll=mirror(b,a);
- const x=state.scrollLeft!=null?state.scrollLeft
-   :Math.max(0,((state.nowIndex-3)/state.chartSeries.length)*a.scrollWidth);
+ const x=state.scrollLeft!=null?Math.min(state.scrollLeft,Math.max(0,a.scrollWidth-a.clientWidth))
+   :Math.max(0,((state.nowIndex-2)/state.chartSeries.length)*a.scrollWidth);
  a.scrollLeft=x; if(b)b.scrollLeft=x; state.scrollLeft=x;
 }
 const dayTicks=(v,H,bottom)=>v.map((b,i)=>b.hour===0?
@@ -971,12 +1044,13 @@ function drawChart(){
  if(need.wind)out+='<circle id="curDot" cx="'+cx.toFixed(1)+'" cy="'+yW(v[state.cursor].kt).toFixed(1)+'" r="5" fill="#F2E9D2" stroke="#08161E" stroke-width="1.5"/>';
  if(on('label'))out+=cursorLabel(v[state.cursor],cx);
 
- const pctW=(100*(state.chartSeries.length/8)/state.span).toFixed(1);
- document.getElementById('chartBox').innerHTML=
-  '<div class="scroller" id="chartScroll">'
-  +'<svg class="chart" style="width:'+pctW+'%" viewBox="0 0 '+VBW+' '+H+'" id="chartSvg" role="img" aria-label="Conditions. Scroll sideways, drag to scrub.">'+out+'</svg></div>'
-  +'<div class="scrollhint"><span>← 3 days back</span><span>scroll · '+state.span+' days on screen</span><span>10 days ahead →</span></div>';
- attachScrub(document.getElementById('chartSvg'),n);
+ const svg=document.getElementById('chartSvg');
+ svg.setAttribute('viewBox','0 0 '+VBW+' '+H);
+ svg.style.width=(100*(state.chartSeries.length/8)/state.span).toFixed(1)+'%';
+ svg.innerHTML=out;
+ const shown=state.span<1?Math.round(state.span*24)+' hours':state.span.toFixed(state.span%1?1:0)+' days';
+ document.getElementById('chartHint').innerHTML=
+  '<span>← 3 days back</span><span>pinch to zoom · '+shown+' on screen</span><span>10 days ahead →</span>';
 }
 
 function buildKey(){
@@ -1095,14 +1169,12 @@ function drawSpread(){
  const ribbon=sp.map((p,i)=>'<rect x="'+(CPAD+i*cw).toFixed(1)+'" y="'+ry+'" width="'+Math.max(1,cw-1).toFixed(1)+'" height="'+Hr+'" fill="'+spreadCol(p.spread)+'"/>').join('');
  const cx=cx_(state.cursor,n);
  const nowLine=state.nowIndex>0?'<line x1="'+cx_(state.nowIndex,n).toFixed(1)+'" x2="'+cx_(state.nowIndex,n).toFixed(1)+'" y1="0" y2="'+(ry+Hr)+'" stroke="#E8DCC0" stroke-width="1" stroke-dasharray="2 3" opacity="0.7"/>':'';
- const pctW=(100*(n/8)/state.span).toFixed(1);
  state.sp=sp;
- document.getElementById('modelChart').innerHTML=
-  '<div class="scroller" id="spreadScroll">'
-  +'<svg class="chart" style="width:'+pctW+'%" viewBox="0 0 '+VBW+' '+H+'" id="spreadSvg" role="img" aria-label="Model agreement. Scroll sideways, drag to scrub.">'
-  +grid+lines+ribbon+nowLine+dayTicks(sp,H,ry+Hr)
-  +'<line id="curLine2" x1="'+cx.toFixed(1)+'" x2="'+cx.toFixed(1)+'" y1="0" y2="'+(ry+Hr)+'" stroke="#E8DCC0" stroke-width="1.5" opacity="0.8"/></svg></div>';
- attachScrub(document.getElementById('spreadSvg'),n);
+ const ssvg=document.getElementById('spreadSvg');
+ ssvg.setAttribute('viewBox','0 0 '+VBW+' '+H);
+ ssvg.style.width=(100*(n/8)/state.span).toFixed(1)+'%';
+ ssvg.innerHTML=grid+lines+ribbon+nowLine+dayTicks(sp,H,ry+Hr)
+  +'<line id="curLine2" x1="'+cx.toFixed(1)+'" x2="'+cx.toFixed(1)+'" y1="0" y2="'+(ry+Hr)+'" stroke="#F2E9D2" stroke-width="2" opacity="0.85"/>';
  document.getElementById('modelLegend').innerHTML=MODELS.map(m=>{
   const ok=!!state.data.models[m.id];
   return '<span class="'+(ok?'':'off')+'"><span class="sw" style="background:'+m.col+'"></span><b style="color:'+(ok?m.col:'var(--dim)')+'">'+m.label+'</b>'+(ok?'':' ('+(state.modelStatus[m.id]||'unavailable')+')')+'</span>';
@@ -1359,8 +1431,10 @@ function buildModelChips(){
   m=>!state.data||!state.data.models[m.id]);
 }
 function buildSpanChips(){
- chipRow(document.getElementById('spans'),SPANS,String(state.span),
-  id=>{state.span=parseInt(id,10);store.set('span',id);state.scrollLeft=null;buildSpanChips();render()});
+ const near=SPANS.reduce((a,x)=>Math.abs(parseFloat(x.id)-state.span)<Math.abs(parseFloat(a.id)-state.span)?x:a);
+ const active=Math.abs(parseFloat(near.id)-state.span)<0.3?near.id:null;
+ chipRow(document.getElementById('spans'),SPANS,active,
+  id=>{state.span=parseFloat(id);store.set('span',id);state.scrollLeft=null;pinch.frac=null;buildSpanChips();render()});
 }
 function buildMapChips(){
  chipRow(document.getElementById('basemaps'),BASEMAPS,state.basemap,
