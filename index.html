@@ -761,8 +761,14 @@ function render(){
  if(state.cursor<0||state.cursor>=state.chartSeries.length)state.cursor=state.nowIndex;
  state.tideEvents=tideEvents(state.spot);
  ensureShells();
- drawChart(); drawSevKey(); drawReadout(); drawSwell(); drawSpread(); drawMap();
- renderWindows(); renderDays(); restoreScroll();
+ try{
+  drawChart(); drawSevKey(); drawReadout(); drawSwell(); drawSpread(); drawMap();
+  renderWindows(); renderDays(); restoreScroll();
+ }catch(err){
+  const e=document.getElementById('err');
+  e.className='status err'; e.textContent='Render error: '+err.message;
+  console.error(err); return;
+ }
  const d=state.data,m=MODELS.find(x=>x.id===state.model),r=REGION();
  document.getElementById('regionEyebrow').textContent=r.label;
  document.getElementById('stamp').innerHTML='<b>'+m.label+'</b> · '+fT.format(d.fetchedAt)+' '+fD.format(d.fetchedAt)
@@ -797,7 +803,8 @@ function attachScrub(svg){
  };
  svg.addEventListener('pointerdown',e=>{
   if(e.pointerType==='touch'&&state.pinching)return;
-  svg.setPointerCapture(e.pointerId);move(e);
+  try{svg.setPointerCapture(e.pointerId)}catch(err){}
+  move(e);
  });
  svg.addEventListener('pointermove',e=>{if(e.buttons&&!state.pinching)move(e)});
 }
@@ -840,7 +847,10 @@ function attachPinch(el){
   const mid=(e.touches[0].clientX+e.touches[1].clientX)/2 - r.left;
   const widths=SCROLLERS().map(sc=>{
    const sv=sc.querySelector('svg');
-   return {sc,sv,w0:sv?sv.getBoundingClientRect().width:sc.scrollWidth};
+   // measured width can come back as 0 mid-layout; fall back rather than collapse
+   const w0=(sv&&sv.getBoundingClientRect().width)||(sv&&parseFloat(sv.style.width))
+     ||sc.scrollWidth||sc.clientWidth||360;
+   return {sc,sv,w0};
   });
   g={d0:Math.max(1,dist(e.touches)),span0:state.span,screenX:mid,
      frac:(el.scrollLeft+mid)/Math.max(1,el.scrollWidth),widths,span:state.span};
@@ -855,7 +865,7 @@ function attachPinch(el){
   const k=g.span0/span;                       // clamped growth factor
   g.widths.forEach(({sc,sv,w0})=>{
    if(!sv)return;
-   const w=w0*k;
+   const w=Math.max(sc.clientWidth||1,w0*k);
    sv.style.width=w.toFixed(0)+'px';
    sc.scrollLeft=Math.max(0,Math.min(w-sc.clientWidth,g.frac*w-g.screenX));
   });
@@ -885,6 +895,15 @@ function attachPinch(el){
  },{passive:false});
 }
 
+/* Width and height in real pixels. The ratio always matches the viewBox, so
+   nothing is distorted at rest, but width alone can be stretched during a pinch. */
+function sizeSvg(svg,scroller,H){
+ const wrap=document.querySelector('.wrap');
+ const px=scroller.clientWidth||(wrap?wrap.clientWidth-32:0)||360;
+ const days=(state.chartSeries&&state.chartSeries.length?state.chartSeries.length:104)/8;
+ svg.style.width=Math.max(px,px*days/state.span).toFixed(0)+'px';
+ svg.style.height=(px*H/CW).toFixed(0)+'px';
+}
 function ensureShells(){
  if(document.getElementById('chartSvg'))return;
  document.getElementById('chartBox').innerHTML=
