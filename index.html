@@ -802,53 +802,78 @@ function attachScrub(svg){
  svg.addEventListener('pointermove',e=>{if(e.buttons&&!state.pinching)move(e)});
 }
 
-/* Pinch to zoom. Redrawing is coalesced into one frame and the point under
-   your fingers is pinned, so the chart grows from where you are looking. */
-let zoomRAF=null, pinch={d0:null,span0:null,frac:null,screenX:0};
+/* Pinch to zoom.
+
+   Redrawing mid-gesture is what broke this before: replacing the SVG contents
+   removes the node your fingers are on, and iOS answers with touchcancel, so the
+   pinch died after a single step. Now the gesture only stretches CSS width, which
+   never touches the DOM tree, and the real redraw happens once on release. */
+let zoomRAF=null, pinch={frac:null,screenX:0};
+const SCROLLERS=()=>[document.getElementById('chartScroll'),document.getElementById('spreadScroll')].filter(Boolean);
+
 function applyZoom(){
  if(zoomRAF)return;
  zoomRAF=requestAnimationFrame(()=>{
   zoomRAF=null;
   VBW=Math.round(CW*(state.chartSeries.length/8)/state.span);
   drawChart(); drawSpread();
-  const a=document.getElementById('chartScroll'), b=document.getElementById('spreadScroll');
+  const a=document.getElementById('chartScroll');
   if(a&&pinch.frac!=null){
-   const x=Math.max(0,Math.min(a.scrollWidth-a.clientWidth, pinch.frac*a.scrollWidth-pinch.screenX));
-   a.scrollLeft=x; if(b)b.scrollLeft=x; state.scrollLeft=x;
+   const x=Math.max(0,Math.min(a.scrollWidth-a.clientWidth,pinch.frac*a.scrollWidth-pinch.screenX));
+   SCROLLERS().forEach(el=>el.scrollLeft=x); state.scrollLeft=x;
   }
  });
 }
 function setSpan(next,commit){
  const v=Math.max(MINSPAN,Math.min(MAXSPAN,next));
  if(Math.abs(v-state.span)/state.span<0.015&&!commit)return;
- state.span=v;
- applyZoom();
+ state.span=v; applyZoom();
  if(commit){store.set('span',String(v));buildSpanChips()}
 }
+
 function attachPinch(el){
  const dist=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
- const focal=e=>{
-  const r=el.getBoundingClientRect();
-  const mid=(e.touches[0].clientX+e.touches[1].clientX)/2;
-  pinch.screenX=mid-r.left;
-  pinch.frac=(el.scrollLeft+pinch.screenX)/Math.max(1,el.scrollWidth);
- };
+ let g=null;
  el.addEventListener('touchstart',e=>{
   if(e.touches.length!==2)return;
-  state.pinching=true; pinch.d0=dist(e.touches); pinch.span0=state.span; focal(e);
+  const r=el.getBoundingClientRect();
+  const mid=(e.touches[0].clientX+e.touches[1].clientX)/2 - r.left;
+  const widths=SCROLLERS().map(sc=>{
+   const sv=sc.querySelector('svg');
+   return {sc,sv,w0:sv?sv.getBoundingClientRect().width:sc.scrollWidth};
+  });
+  g={d0:Math.max(1,dist(e.touches)),span0:state.span,screenX:mid,
+     frac:(el.scrollLeft+mid)/Math.max(1,el.scrollWidth),widths,span:state.span};
+  state.pinching=true;
  },{passive:true});
+
  el.addEventListener('touchmove',e=>{
-  if(e.touches.length!==2||pinch.d0==null)return;
+  if(!g||e.touches.length!==2)return;
   e.preventDefault();
-  setSpan(pinch.span0/(dist(e.touches)/pinch.d0),false);
+  const span=Math.max(MINSPAN,Math.min(MAXSPAN,g.span0/(dist(e.touches)/g.d0)));
+  g.span=span;
+  const k=g.span0/span;                       // clamped growth factor
+  g.widths.forEach(({sc,sv,w0})=>{
+   if(!sv)return;
+   const w=w0*k;
+   sv.style.width=w.toFixed(0)+'px';
+   sc.scrollLeft=Math.max(0,Math.min(w-sc.clientWidth,g.frac*w-g.screenX));
+  });
  },{passive:false});
+
  const end=()=>{
-  if(pinch.d0==null)return;
-  pinch.d0=null; state.pinching=false;
-  store.set('span',String(state.span)); buildSpanChips();
-  setTimeout(()=>{pinch.frac=null},60);
+  if(!g)return;
+  const span=g.span, el0=document.getElementById('chartScroll');
+  pinch.frac=el0?(el0.scrollLeft+g.screenX)/Math.max(1,el0.scrollWidth):null;
+  pinch.screenX=g.screenX;
+  g=null; state.pinching=false;
+  state.span=span; store.set('span',String(span)); buildSpanChips();
+  applyZoom();
+  setTimeout(()=>{pinch.frac=null},80);
  };
- el.addEventListener('touchend',end); el.addEventListener('touchcancel',end);
+ el.addEventListener('touchend',end);
+ el.addEventListener('touchcancel',end);
+
  // trackpad and mouse: ctrl or cmd plus wheel
  el.addEventListener('wheel',e=>{
   if(!e.ctrlKey&&!e.metaKey)return;
@@ -863,10 +888,10 @@ function attachPinch(el){
 function ensureShells(){
  if(document.getElementById('chartSvg'))return;
  document.getElementById('chartBox').innerHTML=
-  '<div class="scroller" id="chartScroll"><svg class="chart" id="chartSvg" role="img" aria-label="Conditions. Scroll, pinch to zoom, drag to scrub."></svg></div>'
+  '<div class="scroller" id="chartScroll"><svg class="chart" id="chartSvg" preserveAspectRatio="none" role="img" aria-label="Conditions. Scroll, pinch to zoom, drag to scrub."></svg></div>'
   +'<div class="scrollhint" id="chartHint"></div>';
  document.getElementById('modelChart').innerHTML=
-  '<div class="scroller" id="spreadScroll"><svg class="chart" id="spreadSvg" role="img" aria-label="Model agreement."></svg></div>';
+  '<div class="scroller" id="spreadScroll"><svg class="chart" id="spreadSvg" preserveAspectRatio="none" role="img" aria-label="Model agreement."></svg></div>';
  attachScrub(document.getElementById('chartSvg'));
  attachScrub(document.getElementById('spreadSvg'));
  attachPinch(document.getElementById('chartScroll'));
@@ -1046,7 +1071,7 @@ function drawChart(){
 
  const svg=document.getElementById('chartSvg');
  svg.setAttribute('viewBox','0 0 '+VBW+' '+H);
- svg.style.width=(100*(state.chartSeries.length/8)/state.span).toFixed(1)+'%';
+ sizeSvg(svg,document.getElementById('chartScroll'),H);
  svg.innerHTML=out;
  const shown=state.span<1?Math.round(state.span*24)+' hours':state.span.toFixed(state.span%1?1:0)+' days';
  document.getElementById('chartHint').innerHTML=
@@ -1172,7 +1197,7 @@ function drawSpread(){
  state.sp=sp;
  const ssvg=document.getElementById('spreadSvg');
  ssvg.setAttribute('viewBox','0 0 '+VBW+' '+H);
- ssvg.style.width=(100*(n/8)/state.span).toFixed(1)+'%';
+ sizeSvg(ssvg,document.getElementById('spreadScroll'),H);
  ssvg.innerHTML=grid+lines+ribbon+nowLine+dayTicks(sp,H,ry+Hr)
   +'<line id="curLine2" x1="'+cx.toFixed(1)+'" x2="'+cx.toFixed(1)+'" y1="0" y2="'+(ry+Hr)+'" stroke="#F2E9D2" stroke-width="2" opacity="0.85"/>';
  document.getElementById('modelLegend').innerHTML=MODELS.map(m=>{
@@ -1453,6 +1478,11 @@ Object.entries(IN).forEach(([id,key])=>{
  });
 });
 document.getElementById('outlookDetails').addEventListener('toggle',e=>{if(e.target.open&&state.data)loadOutlook()});
+let rzT=null;
+window.addEventListener('resize',()=>{
+ clearTimeout(rzT);
+ rzT=setTimeout(()=>{if(state.data&&state.chartSeries){drawChart();drawSpread();restoreScroll()}},150);
+});
 document.getElementById('refresh').addEventListener('click',()=>{state.outlook=null;load()});
 document.addEventListener('visibilitychange',()=>{
  if(!document.hidden&&state.data&&(Date.now()-state.data.fetchedAt)>30*60*1000)load();
