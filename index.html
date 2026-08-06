@@ -14,9 +14,11 @@
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
-  --ink:#0A1922; --ink-2:#102630; --ink-3:#173441; --hairline:#204250;
-  --shoal:#7FB8C4; --buff:#E8DCC0; --dim:#6E8E9B;
-  --drying:#84C067; --amber:#E5A03A; --magenta:#FF3E9A; --tide:#C79BE0; --rain:#5A8FA8;
+  --ink:#08161E; --ink-2:#0F2733; --ink-3:#1B3D4C; --hairline:#2C5A6E;
+  --shoal:#8FCEDC; --buff:#F2E9D2; --dim:#8AA6B2;
+  --drying:#5FD97A; --amber:#FFA83A; --magenta:#FF4D6D; --tide:#D4A8F0; --rain:#5FA8C9;
+  /* severity ramp, shared by arrows, zones and verdict */
+  --sev0:#5FD97A; --sev1:#5FC6E8; --sev2:#FFA83A; --sev3:#FF4D6D;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{-webkit-text-size-adjust:100%}
@@ -50,6 +52,11 @@ body{background:var(--ink);color:var(--buff);
 .region-note{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--shoal);padding:6px 0 0;line-height:1.6}
 
 /* ---- chart key: colour-coded, tappable ---- */
+.sevkey{display:flex;flex-wrap:wrap;gap:4px 14px;padding:10px 0 0;
+  font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--dim)}
+.sevkey b{font-weight:500}
+.sevkey i{display:inline-block;width:0;height:0;vertical-align:middle;margin-right:5px;
+  border-left:8px solid;border-top:5px solid transparent;border-bottom:5px solid transparent}
 .key{display:flex;flex-wrap:wrap;gap:6px;padding:12px 0 2px}
 .keyitem{display:inline-flex;align-items:center;gap:6px;background:var(--ink-2);
   border:1px solid var(--hairline);border-radius:2px;padding:5px 9px 5px 7px;
@@ -65,6 +72,7 @@ body{background:var(--ink);color:var(--buff);
 .ks.multi{background:linear-gradient(90deg,#84C067 0 33%,#E5A03A 33% 66%,#FF3E9A 66%)}
 .ks.band{background:linear-gradient(90deg,#020A10 0 30%,#E5A03A 30% 50%,transparent 50% 100%);
   border:1px solid var(--hairline)}
+.ks.band2{background:rgba(95,217,122,.22);border:1px solid #5FD97A}
 .ks.arrowsw{display:flex;align-items:center;justify-content:center}
 .ks.arrowsw svg{width:16px;height:10px;display:block}
 
@@ -199,6 +207,7 @@ details[open] summary::after{content:' −'}
       now marked. Scroll sideways. Zoom sets how much fits on screen.</div>
     <nav class="chips" id="spans" aria-label="Zoom"></nav>
     <div id="chartBox"><div class="skel" style="height:260px"></div></div>
+    <div class="sevkey" id="sevKey"></div>
     <div class="key" id="chartKey" role="group" aria-label="Chart layers"></div>
     <div class="readout" id="readout"></div>
   </section>
@@ -362,10 +371,27 @@ const LAYERS=[
  {id:'tide',    label:'Tide',        col:'#C79BE0', style:'line', track:'tide',   on:true},
  {id:'temp',    label:'Temperature', col:'#E5A03A', style:'line', track:'temp',   on:false},
  {id:'arrows',  label:'Direction',   col:'#E8DCC0', style:'arrow',track:null,     on:true},
- {id:'daylight',label:'Day / night', col:'#E5A03A', style:'band', track:null,     on:true},
+ {id:'daylight',label:'Day / night', col:'#FFA83A', style:'band', track:null,     on:true},
+ {id:'window',  label:'Best window', col:'#5FD97A', style:'band2',track:null,     on:true},
  {id:'verdict', label:'Verdict',     col:'multi',   style:'bar',  track:'ribbon', on:true}
 ];
-const TRACKH={wind:104,sea:50,tide:48,temp:44,ribbon:14};
+const TRACKH={wind:196,sea:96,tide:92,temp:70,ribbon:22};
+/* Severity ramp. Arrows, zone shading and the verdict strip all read off this,
+   so colour means the same thing everywhere on the chart. */
+const SEV=['#5FD97A','#5FC6E8','#FFA83A','#FF4D6D'];
+function sevWind(kt,t){
+ if(kt<=t.windGo)return 0;
+ if(kt<=(t.windGo+t.windNo)/2)return 1;
+ if(kt<t.windNo)return 2;
+ return 3;
+}
+function sevSea(h,t){
+ if(h==null)return 1;
+ if(h<=t.swellGo)return 0;
+ if(h<=(t.swellGo+t.swellNo)/2)return 1;
+ if(h<t.swellNo)return 2;
+ return 3;
+}
 
 const store=(()=>{let m={};return{
  get(k){try{return localStorage.getItem(k)}catch(e){return m[k]??null}},
@@ -600,7 +626,7 @@ const spreadCol=s=>s==null?'#173441':(s<=4?'#84C067':s<=8?'#E5A03A':'#FF3E9A');
 
 const fD=new Intl.DateTimeFormat('en-AU',{weekday:'short',day:'numeric',month:'short',timeZone:TZ});
 const fT=new Intl.DateTimeFormat('en-AU',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:TZ});
-const CW=660, CPAD=26, CRIGHT=10;
+const CW=400, MW=660, CPAD=34, CRIGHT=14;
 let VBW=CW;                                   /* widens as you zoom in */
 const cx_=(i,n)=>CPAD+(i/(n-1))*(VBW-CPAD-CRIGHT);
 
@@ -659,17 +685,29 @@ function daylightBands(xAt,t0,t1,height){
  return out.join('');
 }
 
-/* Little chevrons riding the line, showing which way the air or water is going. */
-function dirArrows(v,n,yFn,dirFn,col,step){
+/* Chevrons riding the line. Direction tells you where it is going, colour tells
+   you whether it matters, so one glyph carries both. */
+function dirArrows(v,n,yFn,dirFn,colFn,step,size){
  let s='';
+ const k=size||1;
  for(let i=0;i<v.length;i+=step){
   const b=v[i], d=dirFn(b), y=yFn(b);
   if(d==null||y==null)continue;
-  const x=cx_(i,n), a=((d+180)%360)-90;
-  s+='<g transform="translate('+x.toFixed(1)+' '+y.toFixed(1)+') rotate('+a.toFixed(0)+')">'
-   +'<path d="M4.5 0 L-3 3.2 L-1.4 0 L-3 -3.2 Z" fill="'+col+'"/></g>';
+  const x=cx_(i,n), a=((d+180)%360)-90, c=colFn(b);
+  s+='<g transform="translate('+x.toFixed(1)+' '+y.toFixed(1)+') rotate('+a.toFixed(0)+') scale('+k+')">'
+   +'<path d="M6 0 L-4 4.4 L-2 0 L-4 -4.4 Z" fill="'+c+'" stroke="#08161E" stroke-width="0.9" stroke-linejoin="round"/></g>';
  }
  return s;
+}
+/* Horizontal severity zones behind the wind track: read height as risk. */
+function windZones(t,yW,maxKt){
+ const mid=(t.windGo+t.windNo)/2;
+ const band=(lo,hi,col,op)=>{
+  const y1=yW(Math.min(hi,maxKt)), y2=yW(lo);
+  return y2-y1<=0?'':'<rect x="'+CPAD+'" y="'+y1.toFixed(1)+'" width="'+(VBW-CPAD-CRIGHT).toFixed(1)+'" height="'+(y2-y1).toFixed(1)+'" fill="'+col+'" opacity="'+op+'"/>';
+ };
+ return band(0,t.windGo,SEV[0],0.09)+band(t.windGo,mid,SEV[1],0.07)
+   +band(mid,t.windNo,SEV[2],0.07)+band(t.windNo,maxKt,SEV[3],0.10);
 }
 
 function render(){
@@ -681,7 +719,7 @@ function render(){
  VBW=Math.round(CW*(state.chartSeries.length/8)/state.span);
  if(state.cursor<0||state.cursor>=state.chartSeries.length)state.cursor=state.nowIndex;
  state.tideEvents=tideEvents(state.spot);
- drawChart(); drawReadout(); drawSwell(); drawSpread(); drawMap();
+ drawChart(); drawSevKey(); drawReadout(); drawSwell(); drawSpread(); drawMap();
  renderWindows(); renderDays(); wireScroll();
  const d=state.data,m=MODELS.find(x=>x.id===state.model),r=REGION();
  document.getElementById('regionEyebrow').textContent=r.label;
@@ -733,7 +771,7 @@ function wireScroll(){
 }
 const dayTicks=(v,H,bottom)=>v.map((b,i)=>b.hour===0?
  '<line x1="'+cx_(i,v.length).toFixed(1)+'" x2="'+cx_(i,v.length).toFixed(1)+'" y1="0" y2="'+bottom+'" stroke="#204250"/>'
- +'<text x="'+(cx_(i,v.length)+3).toFixed(1)+'" y="'+(H-3)+'" fill="#6E8E9B" font-size="9.5" font-family="monospace">'+fD.format(b.dt).replace(',','')+'</text>':'').join('');
+ +'<text x="'+(cx_(i,v.length)+4).toFixed(1)+'" y="'+(H-4)+'" fill="#B5CBD4" font-size="13" font-family="monospace">'+fD.format(b.dt).replace(',','')+'</text>':'').join('');
 
 /* ---- hero chart, tracks built from whatever layers are switched on ---- */
 function drawChart(){
@@ -746,7 +784,7 @@ function drawChart(){
  if(!order.length){document.getElementById('chartBox').innerHTML='<div class="sublabel">All layers switched off.</div>';return}
  const top={}; let y0=0;
  order.forEach(k=>{top[k]=y0;y0+=TRACKH[k]+gap});
- const H=y0-gap+16, bottom=y0-gap;
+ const H=y0-gap+22, bottom=y0-gap;
 
  let maxKt=25;
  v.forEach(b=>{
@@ -770,44 +808,65 @@ function drawChart(){
  const path=(sel,y)=>{let d='',open=false;v.forEach((b,i)=>{const val=sel(b,i);if(val==null){open=false;return}d+=(open?'L':'M')+cx_(i,n).toFixed(1)+' '+y(val).toFixed(1)+' ';open=true});return d};
  const T0=v[0].dt, T1=v[n-1].dt, SPAN=(T1-T0)||1;
  const xAt=d=>CPAD+((d-T0)/SPAN)*(VBW-CPAD-CRIGHT);
- // arrow density follows the zoom so they never crowd
- const astep=state.span<=2?1:state.span<=3?2:state.span<=5?3:5;
+ // space arrows by actual distance so they stay legible at every zoom
+ const astep=Math.max(1,Math.round(42/((VBW-CPAD-CRIGHT)/n)));
 
  let out='';
  if(on('daylight'))out+=daylightBands(xAt,T0,T1,bottom);
+ // shade the best window so the panel below and the chart agree at a glance
+ if(on('window')){
+  const w=findWindows(state.series,REGION().minWindow)[0];
+  if(w){
+   const x1=xAt(w.start.dt), x2=xAt(w.end.dt);
+   out+='<rect x="'+x1.toFixed(1)+'" y="0" width="'+Math.max(2,x2-x1).toFixed(1)+'" height="'+bottom+'" fill="#5FD97A" opacity="0.07"/>'
+    +'<line x1="'+x1.toFixed(1)+'" x2="'+x1.toFixed(1)+'" y1="0" y2="'+bottom+'" stroke="#5FD97A" stroke-width="1" opacity="0.5"/>'
+    +'<line x1="'+x2.toFixed(1)+'" x2="'+x2.toFixed(1)+'" y1="0" y2="'+bottom+'" stroke="#5FD97A" stroke-width="1" opacity="0.5"/>';
+  }
+ }
  if(need.wind){
+  out+=windZones(t,yW,maxKt);
   if(on('rain'))out+=v.map((b,i)=>{
    if(b.rainP==null||b.rainP<5)return '';
-   const h=(b.rainP/100)*(TRACKH.wind-12);
-   return '<rect x="'+(CPAD+i*cw).toFixed(1)+'" y="'+(top.wind+TRACKH.wind-h).toFixed(1)+'" width="'+Math.max(1,cw-1).toFixed(1)+'" height="'+h.toFixed(1)+'" fill="#5A8FA8" opacity="0.28"/>';
+   const h=(b.rainP/100)*(TRACKH.wind-16);
+   return '<rect x="'+(CPAD+i*cw).toFixed(1)+'" y="'+(top.wind+TRACKH.wind-h).toFixed(1)+'" width="'+Math.max(1,cw-1).toFixed(1)+'" height="'+h.toFixed(1)+'" fill="#5FA8C9" opacity="0.30"/>';
   }).join('');
-  out+=[10,20,30,40].filter(k=>k<=maxKt).map(k=>
-   '<line x1="'+CPAD+'" x2="'+(VBW-CRIGHT)+'" y1="'+yW(k).toFixed(1)+'" y2="'+yW(k).toFixed(1)+'" stroke="#204250" stroke-dasharray="2 4"/>'
-   +'<text x="2" y="'+(yW(k)+4).toFixed(1)+'" fill="#6E8E9B" font-size="10" font-family="monospace">'+k+'</text>').join('');
-  out+='<line x1="'+CPAD+'" x2="'+(VBW-CRIGHT)+'" y1="'+yW(t.windGo).toFixed(1)+'" y2="'+yW(t.windGo).toFixed(1)+'" stroke="#84C067"/>';
+  out+=[10,20,30,40,50].filter(k=>k<=maxKt).map(k=>
+   '<line x1="'+CPAD+'" x2="'+(VBW-CRIGHT)+'" y1="'+yW(k).toFixed(1)+'" y2="'+yW(k).toFixed(1)+'" stroke="#2C5A6E" stroke-dasharray="2 5"/>'
+   +'<text x="4" y="'+(yW(k)+4).toFixed(1)+'" fill="#8AA6B2" font-size="12" font-family="monospace">'+k+'</text>').join('');
+  out+='<line x1="'+CPAD+'" x2="'+(VBW-CRIGHT)+'" y1="'+yW(t.windGo).toFixed(1)+'" y2="'+yW(t.windGo).toFixed(1)+'" stroke="#5FD97A" stroke-width="1.4"/>';
   if(on('ens')&&eb){
    const hi=[],lo=[];
    v.forEach((b,i)=>{const q=bandAt(eb,b.time);if(q){hi.push(cx_(i,n).toFixed(1)+','+yW(q.hi).toFixed(1));lo.unshift(cx_(i,n).toFixed(1)+','+yW(q.lo).toFixed(1))}});
-   if(hi.length>2)out+='<polygon points="'+hi.concat(lo).join(' ')+'" fill="#7FB8C4" opacity="0.2"/>';
+   if(hi.length>2)out+='<polygon points="'+hi.concat(lo).join(' ')+'" fill="#8FCEDC" opacity="0.22"/>';
   }
-  if(on('prev3'))out+='<path d="'+path(b=>b.prev3,yW)+'" fill="none" stroke="#84C067" stroke-width="1.3" stroke-dasharray="5 3" opacity="0.85"/>';
-  if(on('prev1'))out+='<path d="'+path(b=>b.prev1,yW)+'" fill="none" stroke="#FF7A9E" stroke-width="1.3" stroke-dasharray="5 3" opacity="0.85"/>';
-  if(on('gust'))out+='<path d="'+path(b=>b.gust,yW)+'" fill="none" stroke="#7FB8C4" stroke-width="1" opacity="0.45" stroke-dasharray="3 3"/>';
+  if(on('prev3'))out+='<path d="'+path(b=>b.prev3,yW)+'" fill="none" stroke="#5FD97A" stroke-width="1.5" stroke-dasharray="6 4" opacity="0.8"/>';
+  if(on('prev1'))out+='<path d="'+path(b=>b.prev1,yW)+'" fill="none" stroke="#FF8FA6" stroke-width="1.5" stroke-dasharray="6 4" opacity="0.8"/>';
+  if(on('gust')){
+   // gusts as the gap above the mean, which reads as gustiness rather than a second line
+   const hi=v.map((b,i)=>cx_(i,n).toFixed(1)+','+yW(b.gust||b.kt).toFixed(1));
+   const lo=v.slice().reverse().map((b,i)=>cx_(n-1-i,n).toFixed(1)+','+yW(b.kt).toFixed(1));
+   out+='<polygon points="'+hi.concat(lo).join(' ')+'" fill="#8FCEDC" opacity="0.16"/>'
+    +'<path d="'+path(b=>b.gust,yW)+'" fill="none" stroke="#8FCEDC" stroke-width="1.1" opacity="0.55" stroke-dasharray="3 3"/>';
+  }
   if(on('wind')){
    // history in grey, forecast in cream, sharing the boundary block so the line stays joined
-   out+='<path d="'+path((b,i)=>(b.past||i===state.nowIndex)?b.kt:null,yW)+'" fill="none" stroke="#9FB4BD" stroke-width="1.8" opacity="0.8"/>'
-     +'<path d="'+path(b=>b.past?null:b.kt,yW)+'" fill="none" stroke="#E8DCC0" stroke-width="1.8"/>';
-   if(on('arrows'))out+=dirArrows(v,n,b=>yW(b.kt),b=>b.dir,'#E8DCC0',astep);
+   out+='<path d="'+path((b,i)=>(b.past||i===state.nowIndex)?b.kt:null,yW)+'" fill="none" stroke="#9FB4BD" stroke-width="2.2" opacity="0.7"/>'
+     +'<path d="'+path(b=>b.past?null:b.kt,yW)+'" fill="none" stroke="#F2E9D2" stroke-width="2.4"/>';
+   if(on('arrows'))out+=dirArrows(v,n,b=>yW(b.kt),b=>b.dir,b=>SEV[sevWind(b.kt,t)],astep,1.15);
   }
  }
  if(need.sea){
   if(on('sea'))out+='<path d="M'+cx_(0,n).toFixed(1)+' '+(top.sea+TRACKH.sea)+' '
    +v.map((b,i)=>'L'+cx_(i,n).toFixed(1)+' '+yS(b.waveH??0).toFixed(1)).join(' ')
-   +' L'+cx_(n-1,n).toFixed(1)+' '+(top.sea+TRACKH.sea)+' Z" fill="#7FB8C4" opacity="0.3"/>';
-  if(on('swell'))out+='<path d="'+path(b=>{const p=b.trains.find(x=>x.label==='Primary');return p?p.h:null},yS)+'" fill="none" stroke="#C79BE0" stroke-width="1.5"/>';
+   +' L'+cx_(n-1,n).toFixed(1)+' '+(top.sea+TRACKH.sea)+' Z" fill="#8FCEDC" opacity="0.34"/>';
+  if(on('swell'))out+='<path d="'+path(b=>{const p=b.trains.find(x=>x.label==='Primary');return p?p.h:null},yS)+'" fill="none" stroke="#D4A8F0" stroke-width="1.8"/>';
   if(on('arrows'))out+=dirArrows(v,n,b=>b.waveH!=null?yS(b.waveH):null,
-    b=>{const p=b.trains.find(x=>x.label==='Primary');return p&&p.d!=null?p.d:b.waveD},'#BFE0EA',astep);
-  out+='<text x="2" y="'+(top.sea+11)+'" fill="#6E8E9B" font-size="10" font-family="monospace">'+maxSea.toFixed(1)+'m</text>';
+    b=>{const p=b.trains.find(x=>x.label==='Primary');return p&&p.d!=null?p.d:b.waveD},
+    b=>SEV[sevSea(b.waveH,t)],astep,1.05);
+  [0.5,1,1.5,2,3].filter(x=>x<maxSea).forEach(x=>{
+   out+='<line x1="'+CPAD+'" x2="'+(VBW-CRIGHT)+'" y1="'+yS(x).toFixed(1)+'" y2="'+yS(x).toFixed(1)+'" stroke="#2C5A6E" stroke-dasharray="2 5" opacity="0.7"/>'
+    +'<text x="4" y="'+(yS(x)+4).toFixed(1)+'" fill="#8AA6B2" font-size="11" font-family="monospace">'+x+'</text>';
+  });
  }
  if(need.tide){
   const mh=state.data.marine?state.data.marine[spotIndex(state.spot)].hourly:null;
@@ -820,34 +879,34 @@ function drawChart(){
    });
   }
   if(!pts.length)v.forEach((b,i)=>{if(b.tide!=null)pts.push([cx_(i,n),yT(b.tide)])});
-  out+='<path d="'+curve(pts)+'" fill="none" stroke="#C79BE0" stroke-width="1.5"/>';
+  out+='<path d="'+curve(pts)+'" fill="none" stroke="#D4A8F0" stroke-width="2.2"/>';
   out+=(state.tideEvents.turns||[]).filter(e=>e.t>=T0&&e.t<=T1).map(e=>{
    const x=xAt(e.t);
-   return '<circle cx="'+x.toFixed(1)+'" cy="'+yT(e.height).toFixed(1)+'" r="2.8" fill="#C79BE0"/>'
-    +'<text x="'+x.toFixed(1)+'" y="'+(yT(e.height)+(e.kind==='H'?-6:12)).toFixed(1)+'" fill="#C79BE0" font-size="9" font-family="monospace" text-anchor="middle">'+e.kind+' '+e.height.toFixed(1)+'</text>';
+   return '<circle cx="'+x.toFixed(1)+'" cy="'+yT(e.height).toFixed(1)+'" r="3.6" fill="#D4A8F0" stroke="#08161E" stroke-width="1"/>'
+    +'<text x="'+x.toFixed(1)+'" y="'+(yT(e.height)+(e.kind==='H'?-9:16)).toFixed(1)+'" fill="#D4A8F0" font-size="11.5" font-family="monospace" text-anchor="middle">'+e.kind+' '+e.height.toFixed(1)+'</text>';
   }).join('');
-  out+='<text x="2" y="'+(top.tide+11)+'" fill="#6E8E9B" font-size="10" font-family="monospace">tide</text>';
+  out+='<text x="4" y="'+(top.tide+13)+'" fill="#8AA6B2" font-size="11" font-family="monospace">tide</text>';
  }
  if(need.temp){
   const tp=[];v.forEach((b,i)=>{if(b.temp!=null)tp.push([cx_(i,n),yC(b.temp)])});
-  out+='<path d="'+curve(tp)+'" fill="none" stroke="#E5A03A" stroke-width="1.5"/>'
-   +'<text x="2" y="'+(top.temp+11)+'" fill="#E5A03A" font-size="10" font-family="monospace">'+cHi.toFixed(0)+'°</text>'
-   +'<text x="2" y="'+(top.temp+TRACKH.temp)+'" fill="#E5A03A" font-size="10" font-family="monospace">'+cLo.toFixed(0)+'°</text>';
+  out+='<path d="'+curve(tp)+'" fill="none" stroke="#FFA83A" stroke-width="2.2"/>'
+   +'<text x="4" y="'+(top.temp+13)+'" fill="#FFA83A" font-size="11" font-family="monospace">'+cHi.toFixed(0)+'\u00b0</text>'
+   +'<text x="4" y="'+(top.temp+TRACKH.temp)+'" fill="#FFA83A" font-size="11" font-family="monospace">'+cLo.toFixed(0)+'\u00b0</text>';
  }
  if(need.ribbon){
-  out+=v.map((b,i)=>'<rect x="'+(CPAD+i*cw).toFixed(1)+'" y="'+top.ribbon+'" width="'+Math.max(1,cw-1).toFixed(1)+'" height="'+TRACKH.ribbon+'" fill="'+['#84C067','#E5A03A','#FF3E9A'][b.lvl]+'"'+((b.hour<6||b.hour>18)?' opacity="0.35"':'')+'/>').join('');
+  out+=v.map((b,i)=>'<rect x="'+(CPAD+i*cw).toFixed(1)+'" y="'+top.ribbon+'" width="'+Math.max(1,cw-1).toFixed(1)+'" height="'+TRACKH.ribbon+'" fill="'+[SEV[0],SEV[2],SEV[3]][b.lvl]+'"'+((b.hour<6||b.hour>18)?' opacity="0.45"':'')+'/>').join('');
  }
  // "now" divider
  if(state.nowIndex>0){
   const nx=cx_(state.nowIndex,n);
   out+='<line x1="'+nx.toFixed(1)+'" x2="'+nx.toFixed(1)+'" y1="0" y2="'+bottom+'" stroke="#E8DCC0" stroke-width="1" stroke-dasharray="2 3" opacity="0.7"/>'
-   +'<text x="'+(nx+3).toFixed(1)+'" y="9" fill="#E8DCC0" font-size="9" font-family="monospace" opacity="0.8">now</text>';
+   +'<text x="'+(nx+3).toFixed(1)+'" y="9" fill="#E8DCC0" font-size="12" font-family="monospace" opacity="0.9">now</text>';
  }
  out+=dayTicks(v,H,bottom);
  const cx=cx_(state.cursor,n);
  state.yW=need.wind?yW:null;
- out+='<line id="curLine" x1="'+cx.toFixed(1)+'" x2="'+cx.toFixed(1)+'" y1="0" y2="'+bottom+'" stroke="#E8DCC0" stroke-width="1.5"/>';
- if(need.wind)out+='<circle id="curDot" cx="'+cx.toFixed(1)+'" cy="'+yW(v[state.cursor].kt).toFixed(1)+'" r="3.5" fill="#E8DCC0"/>';
+ out+='<line id="curLine" x1="'+cx.toFixed(1)+'" x2="'+cx.toFixed(1)+'" y1="0" y2="'+bottom+'" stroke="#F2E9D2" stroke-width="2"/>';
+ if(need.wind)out+='<circle id="curDot" cx="'+cx.toFixed(1)+'" cy="'+yW(v[state.cursor].kt).toFixed(1)+'" r="5" fill="#F2E9D2" stroke="#08161E" stroke-width="1.5"/>';
 
  const pctW=(100*(state.chartSeries.length/8)/state.span).toFixed(1);
  document.getElementById('chartBox').innerHTML=
@@ -863,6 +922,7 @@ function buildKey(){
   if(id==='prev1'||id==='prev3')return !!(state.data.prev&&state.data.prev[0]&&state.data.prev[0].hourly&&state.data.prev[0].hourly['wind_speed_10m_'+(id==='prev1'?'previous_day1':'previous_day3')]);
   if(id==='rain'||id==='temp')return !!state.data.cond;
   if(id==='daylight')return !!(state.data.cond&&state.data.cond[0]&&state.data.cond[0].daily&&state.data.cond[0].daily.sunrise);
+  if(id==='window')return true;
   if(id==='sea'||id==='swell'||id==='tide')return !!state.data.marine;
   return true;
  };
@@ -870,6 +930,7 @@ function buildKey(){
   const ok=avail(l.id);
   const sw=l.col==='multi'?'<span class="ks multi"></span>'
    :l.style==='band'?'<span class="ks band"></span>'
+   :l.style==='band2'?'<span class="ks band2"></span>'
    :l.style==='arrow'?'<span class="ks arrowsw"><svg viewBox="0 0 16 10"><path d="M11 5 L4 8 L5.6 5 L4 2 Z" fill="'+l.col+'"/></svg></span>'
    :l.style==='line'?'<span class="ks line" style="border-color:'+l.col+'"></span>'
    :l.style==='dash'?'<span class="ks dash" style="border-color:'+l.col+'"></span>'
@@ -951,7 +1012,7 @@ function drawSwell(){
 }
 
 function drawSpread(){
- const sp=spreadSeries(),n=sp.length,Hm=118,Hr=13,gap=9,H=Hm+gap+Hr+16;
+ const sp=spreadSeries(),n=sp.length,Hm=150,Hr=20,gap=10,H=Hm+gap+Hr+22;
  const live=MODELS.filter(m=>state.data.models[m.id]);
  let maxKt=25; sp.forEach(p=>p.vals.forEach(v=>{maxKt=Math.max(maxKt,v.kt)}));
  const y=k=>Hm-(k/maxKt)*(Hm-12);
@@ -959,11 +1020,11 @@ function drawSpread(){
   let d='',open=false;
   sp.forEach((p,i)=>{const v=p.vals.find(x=>x.id===m.id);if(!v){open=false;return}
    d+=(open?'L':'M')+cx_(i,n).toFixed(1)+' '+y(v.kt).toFixed(1)+' ';open=true});
-  return d?'<path d="'+d+'" fill="none" stroke="'+m.col+'" stroke-width="'+(m.id===state.model?2.2:1.2)+'" opacity="'+(m.id===state.model?1:0.8)+'"/>':'';
+  return d?'<path d="'+d+'" fill="none" stroke="'+m.col+'" stroke-width="'+(m.id===state.model?2.8:1.6)+'" opacity="'+(m.id===state.model?1:0.85)+'"/>':'';
  }).join('');
  const grid=[10,20,30,40].filter(k=>k<=maxKt).map(k=>
-  '<line x1="'+CPAD+'" x2="'+(VBW-CRIGHT)+'" y1="'+y(k).toFixed(1)+'" y2="'+y(k).toFixed(1)+'" stroke="#204250" stroke-dasharray="2 4"/>'
-  +'<text x="2" y="'+(y(k)+4).toFixed(1)+'" fill="#6E8E9B" font-size="10" font-family="monospace">'+k+'</text>').join('');
+  '<line x1="'+CPAD+'" x2="'+(VBW-CRIGHT)+'" y1="'+y(k).toFixed(1)+'" y2="'+y(k).toFixed(1)+'" stroke="#2C5A6E" stroke-dasharray="2 5"/>'
+  +'<text x="4" y="'+(y(k)+4).toFixed(1)+'" fill="#8AA6B2" font-size="12" font-family="monospace">'+k+'</text>').join('');
  const ry=Hm+gap, cw=(VBW-CPAD-CRIGHT)/n;
  const ribbon=sp.map((p,i)=>'<rect x="'+(CPAD+i*cw).toFixed(1)+'" y="'+ry+'" width="'+Math.max(1,cw-1).toFixed(1)+'" height="'+Hr+'" fill="'+spreadCol(p.spread)+'"/>').join('');
  const cx=cx_(state.cursor,n);
@@ -981,6 +1042,16 @@ function drawSpread(){
   return '<span class="'+(ok?'':'off')+'"><span class="sw" style="background:'+m.col+'"></span><b style="color:'+(ok?m.col:'var(--dim)')+'">'+m.label+'</b>'+(ok?'':' ('+(state.modelStatus[m.id]||'unavailable')+')')+'</span>';
  }).join('');
  drawSpreadNote();
+}
+function drawSevKey(){
+ const t=thresholds(), mid=((t.windGo+t.windNo)/2).toFixed(0);
+ const smid=((t.swellGo+t.swellNo)/2).toFixed(1);
+ document.getElementById('sevKey').innerHTML=
+  '<span><b style="color:var(--buff)">Arrow colour</b></span>'
+  +'<span><i style="border-left-color:'+SEV[0]+'"></i>go · &le;'+t.windGo+' kt / &le;'+t.swellGo.toFixed(1)+' m</span>'
+  +'<span><i style="border-left-color:'+SEV[1]+'"></i>lumpy · &le;'+mid+' kt / &le;'+smid+' m</span>'
+  +'<span><i style="border-left-color:'+SEV[2]+'"></i>rough · &lt;'+t.windNo+' kt / &lt;'+t.swellNo.toFixed(1)+' m</span>'
+  +'<span><i style="border-left-color:'+SEV[3]+'"></i>stay home</span>';
 }
 function drawSpreadNote(){
  const sp=state.sp; if(!sp||!sp.length)return;
@@ -1007,7 +1078,7 @@ function drawMap(){
  const padDeg=Math.max(0.045,Math.max(latSpan,lonSpan)*0.14);
  const latN=Math.max(...spots.map(s=>s.lat))+padDeg, latS=Math.min(...spots.map(s=>s.lat))-padDeg;
  const lonW=Math.min(...spots.map(s=>s.lon))-padDeg, lonE=Math.max(...spots.map(s=>s.lon))+padDeg;
- const W=CW,pad=8,maxH=540,targetW=W-pad*2;
+ const W=MW,pad=8,maxH=540,targetW=W-pad*2;
  let z=12; for(let k=7;k<=14;k++){z=k;if(mx(lonE,k)-mx(lonW,k)>=targetW)break}
  const bw=mx(lonE,z)-mx(lonW,z), bh=my(latS,z)-my(latN,z);
  const scale=Math.min(targetW/bw,(maxH-pad*2)/bh);
