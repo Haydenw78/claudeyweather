@@ -73,7 +73,7 @@ body{background:var(--ink);color:var(--buff);
 .ks.band{background:linear-gradient(90deg,#020A10 0 30%,#E5A03A 30% 50%,transparent 50% 100%);
   border:1px solid var(--hairline)}
 .ks.band2{background:rgba(95,217,122,.22);border:1px solid #5FD97A}
-.ks.stacksw{background:linear-gradient(180deg,#EBD9A8 0 25%,#D4A8F0 25% 50%,#8FCEDC 50% 75%,#3E6E80 75%)}
+.ks.stacksw{background:linear-gradient(180deg,#C9DDE6 0 25%,#7FC0D2 25% 50%,#4E8FA6 50% 75%,#2F6076 75%)}
 .ks.chipsw{background:var(--ink);border:1px solid var(--hairline);border-left:3px solid var(--sev0)}
 .ks.arrowsw{display:flex;align-items:center;justify-content:center}
 .ks.arrowsw svg{width:16px;height:10px;display:block}
@@ -353,10 +353,10 @@ const DIRS=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','
 const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 const TRAINS=[
- {p:'wind_wave',            label:'Wind wave', col:'#3E6E80'},
- {p:'swell_wave',           label:'Primary',   col:'#8FCEDC'},
- {p:'secondary_swell_wave', label:'Secondary', col:'#D4A8F0'},
- {p:'tertiary_swell_wave',  label:'Tertiary',  col:'#EBD9A8'}
+ {p:'swell_wave',           label:'Primary',   col:'#2F6076'},
+ {p:'secondary_swell_wave', label:'Secondary', col:'#4E8FA6'},
+ {p:'tertiary_swell_wave',  label:'Tertiary',  col:'#7FC0D2'},
+ {p:'wind_wave',            label:'Wind wave', col:'#C9DDE6'}
 ];
 const MARINE_BASE=['wave_height','wave_period','wave_direction','sea_level_height_msl','ocean_current_velocity','ocean_current_direction'];
 const MARINE_TRAINS=[];TRAINS.forEach(t=>MARINE_TRAINS.push(t.p+'_height',t.p+'_period',t.p+'_direction'));
