@@ -52,9 +52,10 @@ body{background:var(--ink);color:var(--buff);
 .region-note{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--shoal);padding:6px 0 0;line-height:1.6}
 
 /* ---- chart key: colour-coded, tappable ---- */
-.sevkey{display:flex;flex-wrap:wrap;gap:4px 14px;padding:10px 0 0;
-  font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--dim)}
-.sevkey b{font-weight:500}
+.sevkey{padding:10px 0 0;font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--dim)}
+.sevrow{display:flex;flex-wrap:wrap;align-items:center;gap:3px 10px;padding:2px 0}
+.sevrow b{font-weight:500;color:var(--buff);min-width:158px}
+.sevnote{opacity:.85}
 .sevkey i{display:inline-block;width:0;height:0;vertical-align:middle;margin-right:5px;
   border-left:8px solid;border-top:5px solid transparent;border-bottom:5px solid transparent}
 .key{display:flex;flex-wrap:wrap;gap:6px;padding:12px 0 2px}
@@ -265,9 +266,9 @@ details[open] summary::after{content:' −'}
   <details>
     <summary>Thresholds for this region</summary>
     <div class="thresh">
-      <label for="tWindGo">Wind at or under (kt) = go</label><input id="tWindGo" type="number" inputmode="decimal">
+      <label for="tWindGo">Wind at or under (km/h) = go</label><input id="tWindGo" type="number" inputmode="decimal">
       <label for="tSwellGo">Sea at or under (m) = go</label><input id="tSwellGo" type="number" inputmode="decimal" step="0.1">
-      <label for="tWindNo">Wind at or over (kt) = no-go</label><input id="tWindNo" type="number" inputmode="decimal">
+      <label for="tWindNo">Wind at or over (km/h) = no-go</label><input id="tWindNo" type="number" inputmode="decimal">
       <label for="tSwellNo">Sea at or over (m) = no-go</label><input id="tSwellNo" type="number" inputmode="decimal" step="0.1">
       <label for="tPeriod">Long-period swell from (s)</label><input id="tPeriod" type="number" inputmode="decimal">
       <label for="tPeriodH">…and at or over (m), downgrade</label><input id="tPeriodH" type="number" inputmode="decimal" step="0.1">
@@ -306,7 +307,7 @@ const REGIONS=[
  {id:'capricorn', label:'Capricorn Bunker', minWindow:12,
   note:'Multi-day offshore. Windows scored over 12 hours or more, because you are staying at sea.',
   bom:'Capricornia Coastal Waters, St Lawrence to Burnett Heads',
-  defaults:{windGo:10,swellGo:1.0,windNo:20,swellNo:2.0,period:11,periodH:1.2},
+  defaults:{windGo:19,swellGo:1.0,windNo:38,swellNo:2.0,period:11,periodH:1.2},
   spots:[
    {id:'sykes',   name:'Sykes',        short:'SYK',  lat:-23.4331,  lon:152.0325,  note:'Eastern edge of the group. Most exposed to E and SE. Current runs hard on the springs.'},
    {id:'lamont',  name:'Lamont',       short:'LAM',  lat:-23.6000,  lon:152.0489,  note:'South-east corner. Open to southerly swell wrapping up from the Tasman.'},
@@ -321,7 +322,7 @@ const REGIONS=[
  {id:'tweed', label:'Tweed', minWindow:6,
   note:'Day trip. Windows scored over 6 hours. Bar crossing governs the whole day.',
   bom:'Gold Coast Waters, Cape Moreton to Point Danger',
-  defaults:{windGo:12,swellGo:1.2,windNo:22,swellNo:2.5,period:12,periodH:1.5},
+  defaults:{windGo:22,swellGo:1.2,windNo:42,swellNo:2.5,period:12,periodH:1.5},
   spots:[
    {id:'ninemile',  name:'Nine Mile', short:'9ML', lat:-28.19460, lon:153.62893, note:'About 5.8 km off Fingal Head, 4.1 nm from the Tweed bar. Open to E and SE.'},
    {id:'kingscliff',name:'Kingscliff',short:'KGC', lat:-28.24828, lon:153.59798, inshore:true, note:'Around 2 km off Cudgen. Close enough in that the wave grid cell also contains land.'},
@@ -330,7 +331,7 @@ const REGIONS=[
  {id:'moreton', label:'Moreton', minWindow:6,
   note:'Day trip, long run north. Watch the afternoon NE seabreeze for the trip home.',
   bom:'Gold Coast Waters, Cape Moreton to Point Danger',
-  defaults:{windGo:12,swellGo:1.2,windNo:22,swellNo:2.5,period:12,periodH:1.5},
+  defaults:{windGo:22,swellGo:1.2,windNo:42,swellNo:2.5,period:12,periodH:1.5},
   spots:[
    {id:'flinders', name:'Flinders Reef',short:'FLR', lat:-26.9667, lon:153.4833, note:'North of Cape Moreton. Pick of the northern reefs, exposed once it gets up.'},
    {id:'smiths',   name:'Smiths Rock',  short:'SMR', lat:-26.9800, lon:153.5300, note:'East of Flinders, deeper and more exposed. Position is an estimate.'},
@@ -381,15 +382,28 @@ const LAYERS=[
  {id:'verdict', label:'Verdict',     col:'multi',   style:'bar',  track:'ribbon', on:true}
 ];
 const TRACKH={wind:196,sea:96,tide:92,temp:70,ribbon:22};
-/* Severity ramp. Arrows, zone shading and the verdict strip all read off this,
-   so colour means the same thing everywhere on the chart. */
+/* Sea severity ramp, still driven by your own thresholds. */
 const SEV=['#5FD97A','#5FC6E8','#FFA83A','#FF4D6D'];
-function sevWind(kt,t){
- if(kt<=t.windGo)return 0;
- if(kt<=(t.windGo+t.windNo)/2)return 1;
- if(kt<t.windNo)return 2;
- return 3;
+
+/* Wind is coloured by the Beaufort scale instead, so it means the same thing
+   here as it does on the marine forecast. Upper bound of each band, km/h. */
+const BFT=[
+ {max:1,        name:'Calm',            col:'#8AA6B2'},
+ {max:11,       name:'Light breeze',    col:'#A9E08A'},
+ {max:19,       name:'Gentle breeze',   col:'#5FD97A'},
+ {max:28,       name:'Moderate breeze', col:'#2F9E52'},
+ {max:38,       name:'Fresh breeze',    col:'#5FC6E8'},
+ {max:49,       name:'Strong breeze',   col:'#FFA83A'},
+ {max:61,       name:'Near gale',       col:'#FF4D6D'},
+ {max:74,       name:'Gale',            col:'#B01030'},
+ {max:Infinity, name:'Strong gale +',   col:'#7A0A22'}
+];
+function bft(kmh){
+ for(let i=0;i<BFT.length;i++)if(kmh<=BFT[i].max)return i;
+ return BFT.length-1;
 }
+const bftCol=kmh=>BFT[bft(kmh)].col;
+const bftName=kmh=>BFT[bft(kmh)].name;
 function sevSea(h,t){
  if(h==null)return 1;
  if(h<=t.swellGo)return 0;
@@ -425,9 +439,9 @@ const SPOT=()=>SPOTS().find(s=>s.id===state.spot)||SPOTS()[0];
 const spotIndex=id=>SPOTS().findIndex(s=>s.id===id);
 function thresholds(){
  const r=REGION(),d=Object.assign({},r.defaults);
- try{const raw=store.get('t_'+r.id);return raw?Object.assign(d,JSON.parse(raw)):d}catch(e){return d}
+ try{const raw=store.get('tk_'+r.id);return raw?Object.assign(d,JSON.parse(raw)):d}catch(e){return d}
 }
-function saveThresholds(t){store.set('t_'+state.region,JSON.stringify(t))}
+function saveThresholds(t){store.set('tk_'+state.region,JSON.stringify(t))}
 function verdict(kt,h,p,t,spot,fR,fDir){
  let l;
  if(kt>=t.windNo||h>=t.swellNo)l=2;
@@ -445,18 +459,18 @@ const iso=d=>d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());
 function coords(){const s=SPOTS();return{lat:s.map(x=>x.lat).join(','),lon:s.map(x=>x.lon).join(',')}}
 const windURL=m=>{const c=coords();return 'https://api.open-meteo.com/v1/forecast?'+new URLSearchParams({
  latitude:c.lat,longitude:c.lon,hourly:'wind_speed_10m,wind_direction_10m,wind_gusts_10m,pressure_msl',
- wind_speed_unit:'kn',timezone:TZ,forecast_days:DAYS,past_days:PAST,models:m})};
+ wind_speed_unit:'kmh',timezone:TZ,forecast_days:DAYS,past_days:PAST,models:m})};
 const condURL=()=>{const c=coords();return 'https://api.open-meteo.com/v1/forecast?'+new URLSearchParams({
  latitude:c.lat,longitude:c.lon,hourly:'precipitation_probability,precipitation,temperature_2m,cloud_cover',
  daily:'sunrise,sunset',timezone:TZ,forecast_days:DAYS,past_days:PAST})};
 const prevURL=m=>{const c=coords();return 'https://api.open-meteo.com/v1/forecast?'+new URLSearchParams({
  latitude:c.lat,longitude:c.lon,
  hourly:'wind_speed_10m_previous_day1,wind_speed_10m_previous_day3',
- wind_speed_unit:'kn',timezone:TZ,forecast_days:DAYS,models:m})};
+ wind_speed_unit:'kmh',timezone:TZ,forecast_days:DAYS,models:m})};
 const marineURL=v=>{const c=coords();return 'https://marine-api.open-meteo.com/v1/marine?'+new URLSearchParams({
  latitude:c.lat,longitude:c.lon,hourly:v.join(','),timezone:TZ,forecast_days:DAYS,past_days:PAST})};
 const ensURL=s=>'https://ensemble-api.open-meteo.com/v1/ensemble?'+new URLSearchParams({
- latitude:s.lat,longitude:s.lon,hourly:'wind_speed_10m',wind_speed_unit:'kn',
+ latitude:s.lat,longitude:s.lon,hourly:'wind_speed_10m',wind_speed_unit:'kmh',
  timezone:TZ,forecast_days:DAYS,models:'ecmwf_ifs025'});
 
 async function getJSON(u){
@@ -626,8 +640,8 @@ function spreadSeries(){
  }
  return out;
 }
-const spreadClass=s=>s==null?'':(s<=4?'tight':s<=8?'loose':'wide');
-const spreadCol=s=>s==null?'#173441':(s<=4?'#84C067':s<=8?'#E5A03A':'#FF3E9A');
+const spreadClass=s=>s==null?'':(s<=7?'tight':s<=15?'loose':'wide');
+const spreadCol=s=>s==null?'#173441':(s<=7?'#5FD97A':s<=15?'#FFA83A':'#FF4D6D');
 
 const fD=new Intl.DateTimeFormat('en-AU',{weekday:'short',day:'numeric',month:'short',timeZone:TZ});
 const fT=new Intl.DateTimeFormat('en-AU',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:TZ});
@@ -709,7 +723,7 @@ const LBLW=134, LBLH=56;
 function labelLines(b){
  return [
   fD.format(b.dt).replace(',','').toUpperCase()+' '+pad2(b.hour)+':00',
-  Math.round(b.kt)+' kt '+compass(b.dir)+' g'+Math.round(b.gust),
+  Math.round(b.kt)+' km/h '+compass(b.dir)+' g'+Math.round(b.gust),
   (b.waveH!=null?b.waveH.toFixed(1)+'m '+Math.round(b.waveP||0)+'s':'no sea')
    +(b.tide!=null?'  tide '+b.tide.toFixed(1)+'m':'')
  ];
@@ -740,15 +754,19 @@ function updateCursorLabel(b,x){
  if(bar)bar.setAttribute('fill',[SEV[0],SEV[2],SEV[3]][b.lvl]);
 }
 
-/* Horizontal severity zones behind the wind track: read height as risk. */
-function windZones(t,yW,maxKt){
- const mid=(t.windGo+t.windNo)/2;
- const band=(lo,hi,col,op)=>{
-  const y1=yW(Math.min(hi,maxKt)), y2=yW(lo);
-  return y2-y1<=0?'':'<rect x="'+CPAD+'" y="'+y1.toFixed(1)+'" width="'+(VBW-CPAD-CRIGHT).toFixed(1)+'" height="'+(y2-y1).toFixed(1)+'" fill="'+col+'" opacity="'+op+'"/>';
- };
- return band(0,t.windGo,SEV[0],0.09)+band(t.windGo,mid,SEV[1],0.07)
-   +band(mid,t.windNo,SEV[2],0.07)+band(t.windNo,maxKt,SEV[3],0.10);
+/* Horizontal Beaufort zones behind the wind track: read height as force. */
+function windZones(t,yW,maxKmh){
+ let lo=0,out='';
+ for(const b of BFT){
+  const hi=Math.min(b.max,maxKmh);
+  if(hi>lo){
+   const y1=yW(hi), y2=yW(lo);
+   if(y2-y1>0)out+='<rect x="'+CPAD+'" y="'+y1.toFixed(1)+'" width="'+(VBW-CPAD-CRIGHT).toFixed(1)+'" height="'+(y2-y1).toFixed(1)+'" fill="'+b.col+'" opacity="0.10"/>';
+  }
+  lo=b.max;
+  if(lo>=maxKmh)break;
+ }
+ return out;
 }
 
 function render(){
@@ -944,7 +962,7 @@ function drawChart(){
  order.forEach(k=>{top[k]=y0;y0+=TRACKH[k]+gap});
  const H=y0-gap+22, bottom=y0-gap;
 
- let maxKt=25;
+ let maxKt=45;
  v.forEach(b=>{
   if(on('gust'))maxKt=Math.max(maxKt,b.gust||0);
   maxKt=Math.max(maxKt,b.kt||0);
@@ -988,7 +1006,7 @@ function drawChart(){
    const h=(b.rainP/100)*(TRACKH.wind-16);
    return '<rect x="'+(CPAD+i*cw).toFixed(1)+'" y="'+(top.wind+TRACKH.wind-h).toFixed(1)+'" width="'+Math.max(1,cw-1).toFixed(1)+'" height="'+h.toFixed(1)+'" fill="#5FA8C9" opacity="0.30"/>';
   }).join('');
-  out+=[10,20,30,40,50].filter(k=>k<=maxKt).map(k=>
+  out+=[10,20,30,40,50,60,70,80].filter(k=>k<=maxKt).map(k=>
    '<line x1="'+CPAD+'" x2="'+(VBW-CRIGHT)+'" y1="'+yW(k).toFixed(1)+'" y2="'+yW(k).toFixed(1)+'" stroke="#2C5A6E" stroke-dasharray="2 5"/>'
    +'<text x="4" y="'+(yW(k)+4).toFixed(1)+'" fill="#8AA6B2" font-size="12" font-family="monospace">'+k+'</text>').join('');
   out+='<line x1="'+CPAD+'" x2="'+(VBW-CRIGHT)+'" y1="'+yW(t.windGo).toFixed(1)+'" y2="'+yW(t.windGo).toFixed(1)+'" stroke="#5FD97A" stroke-width="1.4"/>';
@@ -1010,7 +1028,7 @@ function drawChart(){
    // history in grey, forecast in cream, sharing the boundary block so the line stays joined
    out+='<path d="'+path((b,i)=>(b.past||i===state.nowIndex)?b.kt:null,yW)+'" fill="none" stroke="#9FB4BD" stroke-width="2.2" opacity="0.7"/>'
      +'<path d="'+path(b=>b.past?null:b.kt,yW)+'" fill="none" stroke="#F2E9D2" stroke-width="2.4"/>';
-   if(on('arrows'))out+=dirArrows(v,n,b=>yW(b.kt),b=>b.dir,b=>SEV[sevWind(b.kt,t)],astep,1.15);
+   if(on('arrows'))out+=dirArrows(v,n,b=>yW(b.kt),b=>b.dir,b=>bftCol(b.kt),astep,1.15);
   }
  }
  if(need.sea){
@@ -1140,8 +1158,9 @@ function drawReadout(){
  if(b.prev3!=null)drift.push('−3d '+Math.round(b.prev3));
  document.getElementById('readout').innerHTML=
   '<div class="big v'+b.lvl+'">'+fD.format(b.dt)+' '+pad2(b.hour)+':00 · '+['go','marginal','no-go'][b.lvl]+(b.past?' · past':'')+'</div>'
-  +'<div><span class="k">wind</span> '+Math.round(b.kt)+' kt '+compass(b.dir)+'</div>'
-  +'<div><span class="k">gust</span> '+Math.round(b.gust)+' kt</div>'
+  +'<div><span class="k">wind</span> '+Math.round(b.kt)+' km/h '+compass(b.dir)+'</div>'
+  +'<div><span class="k">force</span> <span style="color:'+bftCol(b.kt)+'">'+bftName(b.kt)+'</span></div>'
+  +'<div><span class="k">gust</span> '+Math.round(b.gust)+' km/h</div>'
   +'<div><span class="k">sea</span> '+(b.waveH!=null?b.waveH.toFixed(1)+' m / '+Math.round(b.waveP||0)+'s':'—')+'</div>'
   +'<div><span class="k">rain</span> '+(b.rainP!=null?b.rainP+'%':'—')+(b.rainMm?' / '+b.rainMm.toFixed(1)+'mm':'')+'</div>'
   +'<div><span class="k">temp</span> '+(b.temp!=null?b.temp.toFixed(1)+'°':'—')+'</div>'
@@ -1149,9 +1168,9 @@ function drawReadout(){
   +'<div><span class="k">tide</span> '+(b.tide!=null?b.tide.toFixed(2)+' m':'—')+'</div>'
   +'<div><span class="k">flow</span> <span style="color:var(--tide)">'+flowWord(b.fR)+(b.fDir?', '+(b.fDir==='flood'?'rising':'falling'):'')+'</span></div>'
   +'<div><span class="k">next slack</span> <span style="color:var(--tide)">'+(ns?fT.format(ns.t)+' '+ns.kind+(mins!=null&&mins>0?' ('+Math.floor(mins/60)+'h'+pad2(mins%60)+')':''):'—')+'</span></div>'
-  +'<div><span class="k">drift</span> '+(b.curV!=null?(b.curV*1.94384).toFixed(1)+' kt '+(b.curD!=null?compass(b.curD):''):'—')+'</div>'
-  +'<div><span class="k">ensemble</span> '+(q?'±'+((q.hi-q.lo)/2).toFixed(0)+' kt / '+q.n+' members':'—')+'</div>'
-  +(drift.length?'<div><span class="k">earlier runs</span> '+drift.join(', ')+' kt</div>':'')
+  +'<div><span class="k">drift</span> '+(b.curV!=null?(b.curV*3.6).toFixed(1)+' km/h '+(b.curD!=null?compass(b.curD):''):'—')+'</div>'
+  +'<div><span class="k">ensemble</span> '+(q?'\u00b1'+((q.hi-q.lo)/2).toFixed(0)+' km/h / '+q.n+' members':'—')+'</div>'
+  +(drift.length?'<div><span class="k">earlier runs</span> '+drift.join(', ')+' km/h</div>':'')
   +(b.barRisk?'<div class="warn">Bar warning: falling tide against '+(b.waveH||0).toFixed(1)+' m of sea. This is when it stands up. Get eyes on it before you commit.</div>':'')
   +(spot.inshore?'<div class="warn" style="color:var(--dim)">Inshore mark. At 8 km grid spacing this cell also contains land, so sea and swell are approximate.</div>':'');
 }
@@ -1198,7 +1217,7 @@ function drawSwell(){
 function drawSpread(){
  const sp=spreadSeries(),n=sp.length,Hm=150,Hr=20,gap=10,H=Hm+gap+Hr+22;
  const live=MODELS.filter(m=>state.data.models[m.id]);
- let maxKt=25; sp.forEach(p=>p.vals.forEach(v=>{maxKt=Math.max(maxKt,v.kt)}));
+ let maxKt=45; sp.forEach(p=>p.vals.forEach(v=>{maxKt=Math.max(maxKt,v.kt)}));
  const y=k=>Hm-(k/maxKt)*(Hm-12);
  const lines=live.map(m=>{
   let d='',open=false;
@@ -1206,7 +1225,7 @@ function drawSpread(){
    d+=(open?'L':'M')+cx_(i,n).toFixed(1)+' '+y(v.kt).toFixed(1)+' ';open=true});
   return d?'<path d="'+d+'" fill="none" stroke="'+m.col+'" stroke-width="'+(m.id===state.model?2.8:1.6)+'" opacity="'+(m.id===state.model?1:0.85)+'"/>':'';
  }).join('');
- const grid=[10,20,30,40].filter(k=>k<=maxKt).map(k=>
+ const grid=[10,20,30,40,50,60,70,80].filter(k=>k<=maxKt).map(k=>
   '<line x1="'+CPAD+'" x2="'+(VBW-CRIGHT)+'" y1="'+y(k).toFixed(1)+'" y2="'+y(k).toFixed(1)+'" stroke="#2C5A6E" stroke-dasharray="2 5"/>'
   +'<text x="4" y="'+(y(k)+4).toFixed(1)+'" fill="#8AA6B2" font-size="12" font-family="monospace">'+k+'</text>').join('');
  const ry=Hm+gap, cw=(VBW-CPAD-CRIGHT)/n;
@@ -1226,26 +1245,34 @@ function drawSpread(){
  drawSpreadNote();
 }
 function drawSevKey(){
- const t=thresholds(), mid=((t.windGo+t.windNo)/2).toFixed(0);
+ const t=thresholds();
  const smid=((t.swellGo+t.swellNo)/2).toFixed(1);
+ const scale=BFT.map((b,i)=>{
+  const lo=i?BFT[i-1].max+1:0;
+  const range=b.max===Infinity?'75+':(i===0?'<1':lo+'\u2013'+b.max);
+  return '<span title="'+b.name+'"><i style="border-left-color:'+b.col+'"></i>'+range+'</span>';
+ }).join('');
  document.getElementById('sevKey').innerHTML=
-  '<span><b style="color:var(--buff)">Arrow colour</b></span>'
-  +'<span><i style="border-left-color:'+SEV[0]+'"></i>go · &le;'+t.windGo+' kt / &le;'+t.swellGo.toFixed(1)+' m</span>'
-  +'<span><i style="border-left-color:'+SEV[1]+'"></i>lumpy · &le;'+mid+' kt / &le;'+smid+' m</span>'
-  +'<span><i style="border-left-color:'+SEV[2]+'"></i>rough · &lt;'+t.windNo+' kt / &lt;'+t.swellNo.toFixed(1)+' m</span>'
-  +'<span><i style="border-left-color:'+SEV[3]+'"></i>stay home</span>';
+  '<div class="sevrow"><b>Wind arrows &middot; Beaufort km/h</b>'+scale+'</div>'
+  +'<div class="sevrow"><b>Sea arrows</b>'
+   +'<span><i style="border-left-color:'+SEV[0]+'"></i>&le;'+t.swellGo.toFixed(1)+' m</span>'
+   +'<span><i style="border-left-color:'+SEV[1]+'"></i>&le;'+smid+' m</span>'
+   +'<span><i style="border-left-color:'+SEV[2]+'"></i>&lt;'+t.swellNo.toFixed(1)+' m</span>'
+   +'<span><i style="border-left-color:'+SEV[3]+'"></i>&ge;'+t.swellNo.toFixed(1)+' m</span>'
+   +'<span class="sevnote">go / no-go still uses your thresholds, '
+   +t.windGo+'\u2013'+t.windNo+' km/h</span></div>';
 }
 function drawSpreadNote(){
  const sp=state.sp; if(!sp||!sp.length)return;
  const p=sp[Math.min(state.cursor,sp.length-1)], now=p.spread;
- const fw=sp.find(x=>x.spread!=null&&x.spread>8&&x.dt>=new Date());
+ const fw=sp.find(x=>x.spread!=null&&x.spread>15&&x.dt>=new Date());
  document.getElementById('modelNote').innerHTML=
   '<b style="color:var(--buff);font-weight:500">'+fD.format(p.dt)+' '+pad2(p.hour)+':00</b> — '
   +(now==null?'only one model live, no spread to report.'
-   :'<span class="agree '+spreadClass(now)+'">'+now.toFixed(0)+' kt spread ('+spreadClass(now)+')</span> across '+p.n+' models: '
-    +p.vals.map(v=>MODELS.find(m=>m.id===v.id).label+' '+Math.round(v.kt)).join(', ')+' kt.')
+   :'<span class="agree '+spreadClass(now)+'">'+now.toFixed(0)+' km/h spread ('+spreadClass(now)+')</span> across '+p.n+' models: '
+    +p.vals.map(v=>MODELS.find(m=>m.id===v.id).label+' '+Math.round(v.kt)).join(', ')+' km/h.')
   +'<br>'+(fw?'Agreement first breaks down around <b style="color:var(--magenta);font-weight:500">'+fD.format(fw.dt)+' '+pad2(fw.hour)+':00</b>. Treat anything past that as provisional.'
-   :'No forward block exceeds 8 kt of spread. The models are holding one solution throughout.');
+   :'No forward block exceeds 15 km/h of spread. The models are holding one solution throughout.');
 }
 
 /* ---- chartlet ---- */
@@ -1297,7 +1324,7 @@ function drawMap(){
    +'<text x="'+cx.toFixed(1)+'" y="'+y.toFixed(1)+'" fill="'+fill+'" font-size="11.5" font-family="monospace" text-anchor="middle">'+txt+'</text>';
   return sw+'<line x1="'+cx.toFixed(1)+'" y1="'+cy.toFixed(1)+'" x2="'+(cx+Math.cos(a)*L).toFixed(1)+'" y2="'+(cy+Math.sin(a)*L).toFixed(1)+'" stroke="'+col+'" stroke-width="2.2"/>'
    +'<circle cx="'+(cx+Math.cos(a)*L).toFixed(1)+'" cy="'+(cy+Math.sin(a)*L).toFixed(1)+'" r="2.8" fill="'+col+'"/>'
-   +ring+label(cy+21,sel?'#E8DCC0':(isBar?'#C79BE0':'#C6D8DE'),p.spot.short)+label(cy+33,col,Math.round(b.kt)+'kt');
+   +ring+label(cy+21,sel?'#E8DCC0':(isBar?'#C79BE0':'#C6D8DE'),p.spot.short)+label(cy+33,col,Math.round(b.kt)+'');
  }).join('');
  const nmPx=(my(latN,z)-my(latN-10/60,z))*scale;
  const bar='<line x1="'+(pad+6)+'" x2="'+(pad+6+nmPx).toFixed(1)+'" y1="'+(H-14)+'" y2="'+(H-14)+'" stroke="#E8DCC0" stroke-width="2"/>'
@@ -1320,7 +1347,7 @@ function renderWindows(){
   const dd=Math.floor(x.hours/24),hh=x.hours%24;
   return '<div class="win lvl'+x.worst+'"><div class="win-range">'
    +fD.format(x.start.dt)+' '+fT.format(x.start.dt)+'<br>→ '+fD.format(x.end.dt)+' '+fT.format(x.end.dt)+'</div>'
-   +'<div class="win-meta"><span class="win-dur">'+(dd?dd+'d ':'')+hh+'h</span> · peak '+Math.round(x.maxKt)+' kt'
+   +'<div class="win-meta"><span class="win-dur">'+(dd?dd+'d ':'')+hh+'h</span> · peak '+Math.round(x.maxKt)+' km/h'
    +(x.maxSea?' · sea to '+x.maxSea.toFixed(1)+' m':'')+' · '+(x.worst===0?'all clear':'includes marginal')+'</div></div>';
  }).join('');
 }
@@ -1343,14 +1370,14 @@ function renderDays(){
    const prim=b.trains.find(x=>x.label==='Primary')||b.trains[0];
    return '<div class="row'+((b.hour<6||b.hour>18)?' is-night':'')+'">'
    +'<span class="t">'+pad2(b.hour)+':00</span>'+arrowSVG(b.dir)
-   +'<span>'+Math.round(b.kt)+' kt '+compass(b.dir)+'<span class="sub"> g'+Math.round(b.gust)+'</span></span>'
+   +'<span>'+Math.round(b.kt)+' km/h '+compass(b.dir)+'<span class="sub"> g'+Math.round(b.gust)+'</span></span>'
    +'<span>'+(b.waveH!=null?b.waveH.toFixed(1)+' m<span class="sub"> '+Math.round(b.waveP||0)+'s</span>':'—')
      +(prim?'<span class="sub"> '+prim.h.toFixed(1)+'/'+Math.round(prim.p||0)+'s '+(prim.d!=null?compass(prim.d):'')+'</span>':'')
      +(b.trains.length>2?'<span class="sub" style="color:var(--tide)"> +'+(b.trains.length-2)+'</span>':'')+'</span>'
    +'<span class="cur">'+flowWord(b.fR)+(b.barRisk?' !':'')+'</span><span class="dot lvl'+b.lvl+'"></span></div>';
   }).join('');
   return '<div class="day"><div class="day-head"><div class="day-name">'+fD.format(bl[0].dt)+'</div>'
-   +'<div class="day-sum">'+Math.round(Math.min(...kts))+'–'+Math.round(Math.max(...kts))+' kt daylight<br>'
+   +'<div class="day-sum">'+Math.round(Math.min(...kts))+'–'+Math.round(Math.max(...kts))+' km/h daylight<br>'
    +['go','marginal','no-go'][best]+' at best</div></div>'
    +(slackLine?'<div class="slackbar">'+slackLine+'</div>':'')
    +'<div class="ribbon">'+ribbon+'</div><div>'+rows+'</div></div>';
@@ -1360,9 +1387,9 @@ function renderDays(){
 /* ---------------- outlook ---------------- */
 const archiveURL=(s,a,b)=>'https://archive-api.open-meteo.com/v1/archive?'+new URLSearchParams({
  latitude:s.lat,longitude:s.lon,start_date:a,end_date:b,
- daily:'wind_speed_10m_max,wind_speed_10m_mean',wind_speed_unit:'kn',timezone:TZ});
+ daily:'wind_speed_10m_max,wind_speed_10m_mean',wind_speed_unit:'kmh',timezone:TZ});
 const seasonalURL=s=>'https://seasonal-api.open-meteo.com/v1/seasonal?'+new URLSearchParams({
- latitude:s.lat,longitude:s.lon,daily:'wind_speed_10m_max',wind_speed_unit:'kn',timezone:TZ,forecast_days:46});
+ latitude:s.lat,longitude:s.lon,daily:'wind_speed_10m_max',wind_speed_unit:'kmh',timezone:TZ,forecast_days:46});
 const pct=(sorted,p)=>sorted[Math.min(sorted.length-1,Math.max(0,Math.floor(p*sorted.length)))];
 
 async function loadOutlook(){
@@ -1438,9 +1465,9 @@ function drawOutlook(){
   +'<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Monthly wind climatology">'+grid+bars+'</svg>'
   +'<div class="otext">Bars are the 25th to 75th percentile of daily maximum wind by month, dot is the median. Current month in cream.<br>'
   +'Calmest historically: <b>'+calmest.join(', ')+'</b>. Windiest: <b>'+windiest.join(', ')+'</b>.<br>'
-  +(sw.length?'For this fortnight, median daily max is <b>'+pct(sw,0.5).toFixed(0)+' kt</b>, a quarter of days under <b>'+pct(sw,0.25).toFixed(0)
-    +' kt</b> and a quarter over <b>'+pct(sw,0.75).toFixed(0)+' kt</b>, across '+sw.length+' days of record.':'')
-  +(percentile!=null?'<br>This forecast period averages <b>'+fMean.toFixed(0)+' kt</b>, landing near the <b class="'
+  +(sw.length?'For this fortnight, median daily max is <b>'+pct(sw,0.5).toFixed(0)+' km/h</b>, a quarter of days under <b>'+pct(sw,0.25).toFixed(0)
+    +' km/h</b> and a quarter over <b>'+pct(sw,0.75).toFixed(0)+' km/h</b>, across '+sw.length+' days of record.':'')
+  +(percentile!=null?'<br>This forecast period averages <b>'+fMean.toFixed(0)+' km/h</b>, landing near the <b class="'
     +(percentile<45?'good':percentile>65?'bad':'')+'">'+percentile+'th percentile</b> for the season. '
     +(percentile<45?'Calmer than typical, so this is a window worth taking.':percentile>65?'Windier than typical. Waiting has a fair chance of finding better.':'About normal.'):'')
   +'<br><br>ERA5 reads at 9 to 25 km and daily maximum runs higher than a 3-hourly point forecast, so trust the ranking more than the raw numbers.</div>'
