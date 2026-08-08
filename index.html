@@ -503,10 +503,10 @@ const windURL=m=>{const c=coords();return 'https://api.open-meteo.com/v1/forecas
 const condURL=()=>{const c=coords();return 'https://api.open-meteo.com/v1/forecast?'+new URLSearchParams({
  latitude:c.lat,longitude:c.lon,hourly:'precipitation_probability,precipitation,temperature_2m,cloud_cover',
  daily:'sunrise,sunset',timezone:TZ,forecast_days:DAYS,past_days:PAST})};
-const prevURL=m=>{const c=coords();return 'https://api.open-meteo.com/v1/forecast?'+new URLSearchParams({
+const prevURL=m=>{const c=coords();return 'https://previous-runs-api.open-meteo.com/v1/forecast?'+new URLSearchParams({
  latitude:c.lat,longitude:c.lon,
  hourly:'wind_speed_10m_previous_day1,wind_speed_10m_previous_day3',
- wind_speed_unit:'kmh',timezone:TZ,forecast_days:DAYS,models:m})};
+ wind_speed_unit:'kmh',timezone:TZ,forecast_days:DAYS,past_days:PAST,models:m})};
 const marineURL=v=>{const c=coords();return 'https://marine-api.open-meteo.com/v1/marine?'+new URLSearchParams({
  latitude:c.lat,longitude:c.lon,hourly:v.join(','),timezone:TZ,forecast_days:DAYS,past_days:PAST})};
 const ensURL=s=>'https://ensemble-api.open-meteo.com/v1/ensemble?'+new URLSearchParams({
@@ -1313,7 +1313,13 @@ function drawChart(){
 function buildKey(){
  const avail=id=>{
   if(id==='ens')return !!state.data.ens;
-  if(id==='prev1'||id==='prev3')return !!(state.data.prev&&state.data.prev[0]&&state.data.prev[0].hourly&&state.data.prev[0].hourly['wind_speed_10m_'+(id==='prev1'?'previous_day1':'previous_day3')]);
+  if(id==='prev1'||id==='prev3'){
+   const k='wind_speed_10m_'+(id==='prev1'?'previous_day1':'previous_day3');
+   const h=state.data.prev&&state.data.prev[0]&&state.data.prev[0].hourly;
+   const a=h&&h[k];
+   // an all-null array is not data; disable rather than offer a dead toggle
+   return !!(a&&a.length&&a.some(v=>v!=null));
+  }
   if(id==='rain'||id==='temp')return !!state.data.cond;
   if(id==='daylight')return !!(state.data.cond&&state.data.cond[0]&&state.data.cond[0].daily&&state.data.cond[0].daily.sunrise);
   if(id==='window'||id==='label')return true;
