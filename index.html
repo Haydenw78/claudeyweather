@@ -169,6 +169,16 @@ details[open] summary::after{content:' −'}
 .hcbox{border-top:1px solid var(--hairline);margin-top:16px}
 .hcres{padding:12px 0 2px}
 .hcbig{font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:500}
+#bulkText{width:100%;margin-top:10px;background:var(--ink-2);border:1px solid var(--hairline);
+  color:var(--buff);font-family:'IBM Plex Mono',monospace;font-size:13px;line-height:1.6;
+  padding:10px;border-radius:2px;resize:vertical}
+#bulkText:focus-visible{outline:2px solid var(--shoal);outline-offset:1px}
+.bulktbl{font-family:'IBM Plex Mono',monospace;font-size:12px;margin-top:12px}
+.bhead,.brow{display:grid;grid-template-columns:52px 58px 74px 46px 40px 1fr;gap:6px;
+  padding:5px 0;border-top:1px dotted var(--ink-3)}
+.bhead{color:var(--dim);border-top:none;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase}
+.brow.err{color:var(--amber);grid-template-columns:1fr}
+.brow .err{color:var(--magenta)}
 .otext .good{color:var(--drying)}
 .logform{display:flex;flex-wrap:wrap;gap:9px;align-items:center;margin-top:12px}
 .logform label{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--dim)}
@@ -320,6 +330,13 @@ details[open] summary::after{content:' −'}
           <button class="btn" id="hcRun">Reconstruct</button>
         </div>
         <div id="hcOut"></div>
+
+        <div class="panel-label" style="margin-top:18px">Or paste a batch</div>
+        <div class="otext">One per line: a date, a number, and optionally a time or the word
+          "high". A bare line naming a spot switches which spot the following lines belong to.</div>
+        <textarea id="bulkText" rows="6" placeholder="Seaway&#10;8/8/26&#9;8m at 3:15pm&#10;21/7&#9;1.5m on high&#10;9/7&#9;12m on high"></textarea>
+        <div class="logform"><button class="btn" id="bulkRun">Reconstruct batch</button></div>
+        <div id="bulkOut"></div>
       </div>
       <div id="logList"></div>
       <div class="otext" id="logHealth"></div>
@@ -2037,6 +2054,175 @@ function saveHindcast(){
  hind=null;
 }
 
+
+/* ===================== bulk backfill ==================================
+   Takes pasted notes in the shape people actually keep them:
+
+     Seaway
+     8/8/26   8m at 3:15pm
+     21/7     1.5m on high
+     9/7      12m on high
+
+   "on high" is resolved against the real tide for that date, which is more
+   useful than a clock time at an estuary entrance.
+====================================================================== */
+const HIGH_OFFSET_H=1.0;   // "on high" taken as this many hours before the turn
+
+function parseBulk(text,defaultSpotId){
+ const rows=[]; let spotId=defaultSpotId;
+ const now=new Date();
+ text.split(/\r?\n/).forEach((raw,ln)=>{
+  const line=raw.trim(); if(!line)return;
+  // a bare line naming one of the spots switches context
+  if(!/\d/.test(line)){
+   const q=line.toLowerCase().replace(/[^a-z ]/g,'').trim();
+   const cand=SPOTS().filter(sp=>{
+    const n=sp.name.toLowerCase();
+    return n===q||sp.short.toLowerCase()===q||n.startsWith(q)||q.startsWith(n);
+   });
+   // "Seaway" matches both the wall and the bar: prefer the dive site
+   const pick=cand.find(sp=>sp.name.toLowerCase()===q)||cand.find(sp=>!sp.bar)||cand[0];
+   if(pick){spotId=pick.id;return}
+  }
+
+  const dm=line.match(/(\d{1,2})\s*[\/\-.]\s*(\d{1,2})(?:\s*[\/\-.]\s*(\d{2,4}))?/);
+  if(!dm){rows.push({line,error:'no date found'});return}
+  let day=+dm[1], mon=+dm[2], yr=dm[3]?+dm[3]:null;
+  if(yr!=null&&yr<100)yr+=2000;
+  if(yr==null){
+   yr=now.getFullYear();
+   const test=new Date(yr,mon-1,day);
+   if(test>now)yr--;                       // no future dives
+  }
+  // visibility: allow 8m, 1.5m, 1:5m, 8-10m
+  const rest=line.slice(dm.index+dm[0].length);
+  const vm=rest.match(/(\d+(?:[.:]\d+)?)\s*(?:-\s*(\d+(?:[.:]\d+)?)\s*)?m\b/i)
+        ||rest.match(/(\d+(?:[.:]\d+)?)\s*(?:-\s*(\d+(?:[.:]\d+)?))?/);
+  if(!vm){rows.push({line,error:'no visibility found'});return}
+  const num=x=>x==null?null:parseFloat(String(x).replace(':','.'));
+  const a=num(vm[1]), b=num(vm[2]);
+  const vis=(b!=null&&!isNaN(b))?(a+b)/2:a;
+  if(vis==null||isNaN(vis)){rows.push({line,error:'could not read the number'});return}
+
+  const onHigh=/\bhigh\b/i.test(rest);
+  let hour=null, minute=0;
+  const tm=rest.match(/(\d{1,2})[:.](\d{2})\s*(am|pm)?/i)||rest.match(/\b(\d{1,2})\s*(am|pm)\b/i);
+  if(tm){
+   hour=+tm[1]; minute=tm[2]&&/^\d+$/.test(tm[2])?+tm[2]:0;
+   const ap=(tm[3]||tm[2]||'').toLowerCase();
+   if(ap==='pm'&&hour<12)hour+=12;
+   if(ap==='am'&&hour===12)hour=0;
+  }
+  rows.push({line,spotId,date:yr+'-'+pad2(mon)+'-'+pad2(day),vis,onHigh,
+    hour:tm?hour:null,minute:tm?minute:0});
+ });
+ return rows;
+}
+
+const archCache={};
+async function archWindow(spot,date){
+ const from=shiftDays(date,-5), to=shiftDays(date,1);
+ const key=spot.id+'|'+from;
+ if(archCache[key])return archCache[key];
+ const [w,m]=await Promise.all([
+  settle(getJSON(archWindURL(spot,from,to))),
+  settle(getJSON(archMarineURL(spot,from,to)))
+ ]);
+ const val={w:w.ok?w.value[0].hourly:null, m:m.ok?m.value[0].hourly:null,
+            err:w.ok?null:w.error};
+ archCache[key]=val;
+ return val;
+}
+
+async function runBulk(){
+ const ta=document.getElementById('bulkText'), out=document.getElementById('bulkOut');
+ const rows=parseBulk(ta.value,state.spot);
+ if(!rows.length){out.innerHTML='<div class="otext">Nothing to read.</div>';return}
+ const t=thresholds(), existing=new Set(logRead().map(r=>r.ts+'|'+r.spot));
+ const done=[];
+ out.innerHTML='<div class="skel" style="height:40px"></div><div class="otext">Reconstructing '+rows.length+' dates…</div>';
+
+ for(const r of rows){
+  if(r.error){done.push(r);continue}
+  const spot=SPOTS().find(x=>x.id===r.spotId)||SPOT();
+  const A=await archWindow(spot,r.date);
+  if(!A.w){r.error='archive unavailable';done.push(r);continue}
+  const turns=A.m?tideTurnsFrom(A.m):{turns:[]};
+  const blocks=buildBlocks(A.w,A.m,null,spot,t);
+  computeVis(blocks,spot,turns);
+  const sameDay=blocks.filter(b=>b.time.startsWith(r.date));
+  if(!sameDay.length){r.error='no data for that date';done.push(r);continue}
+
+  let target;
+  if(r.onHigh){
+   // resolve against the actual tide, then step back to the dive window
+   const hi=(turns.turns||[]).filter(e=>e.kind==='H'&&e.t.toDateString()===new Date(r.date+'T12:00').toDateString());
+   // prefer a daylight high
+   const day=hi.filter(e=>e.t.getHours()>=5&&e.t.getHours()<=19);
+   const chosen=(day.length?day:hi)[0];
+   if(chosen){
+    target=new Date(chosen.t.getTime()-HIGH_OFFSET_H*3600000);
+    r.highAt=chosen.t;
+   }
+  }
+  if(!target&&r.hour!=null)target=new Date(r.date+'T'+pad2(r.hour)+':'+pad2(r.minute));
+  if(!target)target=new Date(r.date+'T09:00');
+  r.resolved=target;
+  // nearest 3-hourly block
+  const b=sameDay.reduce((best,x)=>Math.abs(x.dt-target)<Math.abs(best.dt-target)?x:best,sameDay[0]);
+  r.block=b;
+  if(existing.has(b.time+'|'+spot.id)){r.dup=true;done.push(r);continue}
+
+  const prim=b.trains.find(x=>x.label==='Primary');
+  r.rec={
+   id:'obs_'+b.time.replace(/[^0-9]/g,'')+'_'+spot.id+'_'+Math.random().toString(36).slice(2,7),
+   v:ENGINE_VERSION, source:'bulk-hindcast', sourceLine:r.line,
+   ts:b.time, logged:new Date().toISOString(),
+   region:state.region, spot:spot.id, spotName:spot.name, type:spot.type||'shelf', depth:spot.dMin||null,
+   model:'era5_archive', tideRef:r.onHigh?'on high':'clock',
+   windKmh:+b.kt.toFixed(1), gustKmh:b.gust!=null?+b.gust.toFixed(1):null, windDir:Math.round(b.dir),
+   seaM:b.waveH!=null?+b.waveH.toFixed(2):null, seaS:b.waveP!=null?+b.waveP.toFixed(1):null,
+   swellM:prim?+prim.h.toFixed(2):null, swellS:prim?+(prim.p||0).toFixed(1):null,
+   swellDir:prim&&prim.d!=null?Math.round(prim.d):null,
+   ubMs:b.ub!=null?+b.ub.toFixed(3):null, ekman:b.ekman!=null?+b.ekman.toFixed(3):null,
+   sstC:b.sst!=null?+b.sst.toFixed(2):null, sstAnom:b.sstAnom!=null?+b.sstAnom.toFixed(2):null,
+   rain72mm:b.rain72!=null?+b.rain72.toFixed(1):null,
+   tideM:b.tide!=null?+b.tide.toFixed(2):null, tideDir:b.fDir||null,
+   hrsToHigh:b.hrsToHigh!=null?+b.hrsToHigh.toFixed(2):null,
+   plume:b.plume!=null?+b.plume.toFixed(3):null,
+   visPredicted:Math.round(b.vis), visPredictedM:+b.visM.toFixed(1),
+   visBand:b.visBand.label, vMax:b.vMax, vMin:b.vMin,
+   visObservedM:r.vis, obsWindKmh:null, obsSeaM:null, forecastRating:null, notes:null
+  };
+  done.push(r);
+ }
+
+ const good=done.filter(r=>r.rec);
+ if(good.length){
+  const a=logRead(); good.forEach(r=>a.push(r.rec)); logWrite(a); renderLog();
+ }
+ const gaps=good.map(r=>r.vis-r.rec.visPredictedM);
+ const mae=gaps.length?gaps.reduce((x,y)=>x+Math.abs(y),0)/gaps.length:null;
+ const bias=gaps.length?gaps.reduce((x,y)=>x+y,0)/gaps.length:null;
+
+ out.innerHTML='<div class="bulktbl">'
+  +'<div class="bhead"><span>date</span><span>time</span><span>wind</span><span>pred</span><span>saw</span><span>gap</span></div>'
+  +done.map(r=>{
+   if(r.error)return '<div class="brow err"><span colspan="6">'+r.line+' &mdash; '+r.error+'</span></div>';
+   if(r.dup)return '<div class="brow"><span>'+r.date+'</span><span colspan="5">already in the databank</span></div>';
+   const g=r.vis-r.rec.visPredictedM;
+   return '<div class="brow"><span>'+r.date.slice(5)+'</span>'
+    +'<span>'+fT.format(r.resolved)+(r.onHigh?'*':'')+'</span>'
+    +'<span>'+Math.round(r.rec.windKmh)+' '+compass(r.rec.windDir)+'</span>'
+    +'<span>'+r.rec.visPredictedM+'</span><span>'+r.vis+'</span>'
+    +'<span class="'+(Math.abs(g)>6?'err':'')+'">'+(g>0?'+':'')+g.toFixed(1)+'</span></div>';
+  }).join('')+'</div>'
+  +(mae!=null?'<div class="otext">Added <b>'+good.length+'</b>. Mean error <b>'+mae.toFixed(1)
+    +' m</b>, bias <b>'+(bias>0?'+':'')+bias.toFixed(1)+' m</b> ('
+    +(bias>0?'model reads low':'model reads high')+').<br>'
+    +'* resolved to '+HIGH_OFFSET_H+' h before the actual high tide.</div>':'');
+}
+
 /* ---- chips ---- */
 function chipRow(el,items,active,pick,offFn,cls){
  el.innerHTML=items.map(i=>{
@@ -2092,6 +2278,7 @@ document.getElementById('logSave').addEventListener('click',logSave);
 document.getElementById('logExport').addEventListener('click',logExport);
 document.getElementById('logExportJson').addEventListener('click',logExportJSON);
 document.getElementById('hcRun').addEventListener('click',runHindcast);
+document.getElementById('bulkRun').addEventListener('click',runBulk);
 document.getElementById('logImport').addEventListener('change',e=>{
  if(e.target.files&&e.target.files[0])logImport(e.target.files[0]);
  e.target.value='';
