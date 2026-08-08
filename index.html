@@ -166,9 +166,15 @@ details[open] summary::after{content:' −'}
 .thresh input:focus-visible{outline:2px solid var(--shoal);outline-offset:1px}
 .thresh-note{grid-column:1 / -1;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim);line-height:1.6;padding-top:4px}
 .logbox{margin-top:14px}
+.hcbox{border-top:1px solid var(--hairline);margin-top:16px}
+.hcres{padding:12px 0 2px}
+.hcbig{font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:500}
+.otext .good{color:var(--drying)}
 .logform{display:flex;flex-wrap:wrap;gap:9px;align-items:center;margin-top:12px}
 .logform label{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--dim)}
-.logform input{width:88px;background:var(--ink-2);border:1px solid var(--hairline);color:var(--buff);
+.logform select{background:var(--ink-2);border:1px solid var(--hairline);color:var(--buff);
+  font-family:'IBM Plex Mono',monospace;font-size:13px;padding:8px 9px;border-radius:2px}
+.logform input{width:76px;background:var(--ink-2);border:1px solid var(--hairline);color:var(--buff);
   font-family:'IBM Plex Mono',monospace;font-size:14px;padding:8px 9px;border-radius:2px;text-align:right}
 .logrow{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:baseline;
   font-family:'IBM Plex Mono',monospace;font-size:12px;padding:6px 0;border-top:1px dotted var(--ink-3)}
@@ -280,15 +286,49 @@ details[open] summary::after{content:' −'}
         it captures every driver the app believed at that moment, so the coefficients can be fitted
         properly later rather than argued about.</div>
       <div class="logform">
-        <label for="logVis">Visibility you got (m)</label>
-        <input id="logVis" type="number" inputmode="decimal" step="0.5" placeholder="e.g. 8">
+        <label for="logVis">Vis (m)</label>
+        <input id="logVis" type="number" inputmode="decimal" step="0.5" placeholder="8">
+        <label for="logWind">Wind (km/h)</label>
+        <input id="logWind" type="number" inputmode="decimal" placeholder="opt">
+        <label for="logSea">Sea (m)</label>
+        <input id="logSea" type="number" inputmode="decimal" step="0.1" placeholder="opt">
+      </div>
+      <div class="logform">
+        <label for="logRate">Forecast was</label>
+        <select id="logRate">
+          <option value="">—</option>
+          <option value="right">about right</option>
+          <option value="under">understated it</option>
+          <option value="over">overstated it</option>
+        </select>
+        <input id="logNote" type="text" placeholder="notes, optional" style="flex:1;min-width:150px;text-align:left">
         <button class="btn" id="logSave">Log this hour</button>
       </div>
       <div class="otext" id="logCtx"></div>
+
+      <div class="hcbox">
+        <div class="panel-label" style="margin-top:16px">Backfill a past dive</div>
+        <div class="otext">Every driver is reconstructable, so a date and a remembered number is enough.
+          Works back to 1940 for wind and to 2022 for waves. Good for old trips, dive shop reports, or
+          anything your groups have posted with a date on it.</div>
+        <div class="logform">
+          <input id="hcDate" type="date" style="width:auto;text-align:left">
+          <select id="hcHour">
+            <option value="6">06:00</option><option value="9" selected>09:00</option>
+            <option value="12">12:00</option><option value="15">15:00</option>
+          </select>
+          <button class="btn" id="hcRun">Reconstruct</button>
+        </div>
+        <div id="hcOut"></div>
+      </div>
       <div id="logList"></div>
+      <div class="otext" id="logHealth"></div>
       <div class="logform" style="margin-top:10px">
+        <button class="btn" id="logExportJson">Export JSON</button>
         <button class="btn" id="logExport">Export CSV</button>
-        <button class="btn" id="logClear" style="border-color:var(--magenta);color:var(--magenta)">Clear all</button>
+        <label class="btn" for="logImport" style="cursor:pointer">Import</label>
+        <input id="logImport" type="file" accept="application/json,.json" style="display:none">
+        <button class="btn" id="logClear" style="border-color:var(--magenta);color:var(--magenta)">Clear local</button>
       </div>
     </div>
   </details>
@@ -339,14 +379,14 @@ const REGIONS=[
   bom:'Capricornia Coastal Waters, St Lawrence to Burnett Heads',
   defaults:{windGo:19,swellGo:1.0,windNo:38,swellNo:2.0,period:11,periodH:1.2},
   spots:[
-   {id:'sykes',   name:'Sykes',        short:'SYK',  lat:-23.4331,  lon:152.0325,  type:'oceanic', dMin:10, dMax:30, note:'Eastern edge of the group. Most exposed to E and SE. Current runs hard on the springs.'},
-   {id:'lamont',  name:'Lamont',       short:'LAM',  lat:-23.6000,  lon:152.0489,  type:'oceanic', dMin:10, dMax:30, note:'South-east corner. Open to southerly swell wrapping up from the Tasman.'},
-   {id:'broom',   name:'Broomfield',   short:'BRO',  lat:-23.2650,  lon:151.9400,  type:'oceanic', dMin:8,  dMax:25, note:'North of Heron. Best lee in a SE. Position is an estimate — check your plotter.'},
-   {id:'nwi',     name:'North West Is',short:'NWI',  lat:-23.2983,  lon:151.7075,  type:'oceanic', dMin:8,  dMax:25, note:'Largest cay in the Marine Park. Western side, so it sits in the lee of a SE.'},
-   {id:'masthead',name:'Masthead Is',  short:'MHD',  lat:-23.5383,  lon:151.7333,  type:'oceanic', dMin:8,  dMax:25, note:'Elongate platform reef on the western side. Sheltered anchoring on the lee.'},
-   {id:'heron',   name:'Heron',        short:'HER',  lat:-23.4425,  lon:151.9139,  type:'oceanic', dMin:10, dMax:25, note:'Reference point. Compare against what the apps are showing you.'},
-   {id:'lmi',     name:'Lady Musgrave',short:'LMI',  lat:-23.9063,  lon:152.4006,  type:'oceanic', dMin:8,  dMax:25, note:'Fallback. Navigable lagoon, the forgiving overnight anchorage in the group.'},
-   {id:'bar1770', name:'1770 Bar',     short:'1770', lat:-24.16170, lon:151.87420, bar:true, inshore:true, type:'estuarine', dMin:5, dMax:8, shelter:0.6,
+   {id:'sykes', vMax:35, vMin:10,   name:'Sykes',        short:'SYK',  lat:-23.4331,  lon:152.0325,  type:'oceanic', dMin:10, dMax:30, note:'Eastern edge of the group. Most exposed to E and SE. Current runs hard on the springs.'},
+   {id:'lamont', vMax:35, vMin:10,  name:'Lamont',       short:'LAM',  lat:-23.6000,  lon:152.0489,  type:'oceanic', dMin:10, dMax:30, note:'South-east corner. Open to southerly swell wrapping up from the Tasman.'},
+   {id:'broom', vMax:35, vMin:10,   name:'Broomfield',   short:'BRO',  lat:-23.2650,  lon:151.9400,  type:'oceanic', dMin:8,  dMax:25, note:'North of Heron. Best lee in a SE. Position is an estimate — check your plotter.'},
+   {id:'nwi', vMax:30, vMin:8,     name:'North West Is',short:'NWI',  lat:-23.2983,  lon:151.7075,  type:'oceanic', dMin:8,  dMax:25, note:'Largest cay in the Marine Park. Western side, so it sits in the lee of a SE.'},
+   {id:'masthead', vMax:30, vMin:8,name:'Masthead Is',  short:'MHD',  lat:-23.5383,  lon:151.7333,  type:'oceanic', dMin:8,  dMax:25, note:'Elongate platform reef on the western side. Sheltered anchoring on the lee.'},
+   {id:'heron', vMax:32, vMin:9,   name:'Heron',        short:'HER',  lat:-23.4425,  lon:151.9139,  type:'oceanic', dMin:10, dMax:25, note:'Reference point. Compare against what the apps are showing you.'},
+   {id:'lmi', vMax:32, vMin:9,     name:'Lady Musgrave',short:'LMI',  lat:-23.9063,  lon:152.4006,  type:'oceanic', dMin:8,  dMax:25, note:'Fallback. Navigable lagoon, the forgiving overnight anchorage in the group.'},
+   {id:'bar1770', vMax:6, vMin:1, name:'1770 Bar',     short:'1770', lat:-24.16170, lon:151.87420, bar:true, inshore:true, type:'estuarine', dMin:5, dMax:8, shelter:0.6,
                   note:'Round Hill Creek entrance. Departure point, not a dive site. Watch it on the ebb with any south in the swell.'}
   ]},
  {id:'tweed', label:'Tweed & Gold Coast', minWindow:6,
@@ -354,17 +394,17 @@ const REGIONS=[
   bom:'Gold Coast Waters, Cape Moreton to Point Danger',
   defaults:{windGo:22,swellGo:1.2,windNo:42,swellNo:2.5,period:12,periodH:1.5},
   spots:[
-   {id:'seawaywall',name:'Seaway Wall',short:'SWW', lat:-27.93900, lon:153.42900, inshore:true, type:'estuarine', dMin:10, dMax:25, shelter:0.25,
+   {id:'seawaywall', vMax:12, vMin:1,name:'Seaway Wall',short:'SWW', lat:-27.93900, lon:153.42900, inshore:true, type:'estuarine', dMin:10, dMax:25, shelter:0.25,
                     note:'Southern wall. Estuary-connected, so dive the last hour or two of the flood only. What you get in that window is capped by whatever is happening offshore.'},
-   {id:'seawaybar', name:'Seaway Bar', short:'SWB', lat:-27.93700, lon:153.43700, bar:true, inshore:true, type:'estuarine', dMin:5, dMax:10, shelter:0.7,
+   {id:'seawaybar', vMax:6, vMin:1, name:'Seaway Bar', short:'SWB', lat:-27.93700, lon:153.43700, bar:true, inshore:true, type:'estuarine', dMin:5, dMax:10, shelter:0.7,
                     note:'The entrance. Walls are aligned 15 degrees north of east to cut swell entry, but it still stands up on an ebb.'},
-   {id:'ninemile',  name:'Nine Mile', short:'9ML', lat:-28.19460, lon:153.62893, type:'shelf', dMin:10, dMax:24,
+   {id:'ninemile', vMax:25, vMin:3,  name:'Nine Mile', short:'9ML', lat:-28.19460, lon:153.62893, type:'shelf', dMin:10, dMax:24,
                     note:'Starts at 24 m on the north-west side and rises to 10 m over the reef. About 5.8 km off Fingal Head.'},
-   {id:'fidos',     name:'Fidos',     short:'FID', lat:-28.21000, lon:153.61000, type:'shelf', dMin:5, dMax:15,
+   {id:'fidos', vMax:18, vMin:2,     name:'Fidos',     short:'FID', lat:-28.21000, lon:153.61000, type:'shelf', dMin:5, dMax:15,
                     note:'Shallower, 5 to 15 m. Position is an estimate — send me the mark and I will correct it.'},
-   {id:'kingscliff',name:'Kingscliff',short:'KGC', lat:-28.24828, lon:153.59798, inshore:true, type:'shelf', dMin:5, dMax:15,
+   {id:'kingscliff', vMax:15, vMin:2,name:'Kingscliff',short:'KGC', lat:-28.24828, lon:153.59798, inshore:true, type:'shelf', dMin:5, dMax:15,
                     note:'Shallow, 5 to 15 m, around 2 km off Cudgen. Most exposed of the three to swell stirring.'},
-   {id:'tweedbar',  name:'Tweed Bar', short:'TWD', lat:-28.16908, lon:153.55643, bar:true, inshore:true, type:'estuarine', dMin:5, dMax:10, shelter:0.7,
+   {id:'tweedbar', vMax:6, vMin:1,  name:'Tweed Bar', short:'TWD', lat:-28.16908, lon:153.55643, bar:true, inshore:true, type:'estuarine', dMin:5, dMax:10, shelter:0.7,
                     note:'The gate. Training walls help but it still stands up on an ebb against south swell.'}
   ]},
  {id:'moreton', label:'Moreton', minWindow:6,
@@ -372,9 +412,9 @@ const REGIONS=[
   bom:'Gold Coast Waters, Cape Moreton to Point Danger',
   defaults:{windGo:22,swellGo:1.2,windNo:42,swellNo:2.5,period:12,periodH:1.5},
   spots:[
-   {id:'flinders', name:'Flinders Reef',short:'FLR', lat:-26.9667, lon:153.4833, type:'shelf', dMin:8,  dMax:25, note:'North of Cape Moreton. Pick of the northern reefs, exposed once it gets up. Sits close to where the EAC runs hardest inshore.'},
-   {id:'smiths',   name:'Smiths Rock',  short:'SMR', lat:-26.9800, lon:153.5300, type:'shelf', dMin:18, dMax:35, note:'East of Flinders, deeper and more exposed. Depth protects it from swell stirring. Position is an estimate.'},
-   {id:'capemor',  name:'Cape Moreton', short:'CPM', lat:-27.0330, lon:153.4670, type:'shelf', dMin:10, dMax:25, note:'The corner. Useful reference for the top of the island.'}
+   {id:'flinders', vMax:30, vMin:5, name:'Flinders Reef',short:'FLR', lat:-26.9667, lon:153.4833, type:'shelf', dMin:8,  dMax:25, note:'North of Cape Moreton. Pick of the northern reefs, exposed once it gets up. Sits close to where the EAC runs hardest inshore.'},
+   {id:'smiths', vMax:32, vMin:6,   name:'Smiths Rock',  short:'SMR', lat:-26.9800, lon:153.5300, type:'shelf', dMin:18, dMax:35, note:'East of Flinders, deeper and more exposed. Depth protects it from swell stirring. Position is an estimate.'},
+   {id:'capemor', vMax:25, vMin:4,  name:'Cape Moreton', short:'CPM', lat:-27.0330, lon:153.4670, type:'shelf', dMin:10, dMax:25, note:'The corner. Useful reference for the top of the island.'}
   ]}
 ];
 const MODELS=[
@@ -530,6 +570,7 @@ async function fetchMarine(){
 async function load(){
  document.getElementById('stamp').textContent='Fetching…';
  document.getElementById('err').textContent='';
+ if(!repoObs.length)await loadRepoObs();
  const [marine,cond,ens,prev,...mods]=await Promise.all([
   fetchMarine(), settle(getJSON(condURL())), settle(getJSON(ensURL(SPOT()))),
   settle(getJSON(prevURL(state.model))),
@@ -562,7 +603,10 @@ function fail(m){
 
 function tideEvents(spotId){
  const d=state.data; if(!d.marine)return{turns:[],peaks:[]};
- const m=d.marine[spotIndex(spotId)].hourly, h=m&&m.sea_level_height_msl;
+ return tideTurnsFrom(d.marine[spotIndex(spotId)].hourly);
+}
+function tideTurnsFrom(m){
+ const h=m&&m.sea_level_height_msl;
  if(!h)return{turns:[],peaks:[]};
  const ev=[];
  for(let i=1;i<h.length-1;i++){
@@ -583,59 +627,6 @@ function tideEvents(spotId){
 }
 
 /* ---------------- series ---------------- */
-function series(spotId,modelId){
- const t=thresholds();
- const key=state.region+'|'+spotId+'|'+modelId+'|'+JSON.stringify(t);
- if(state.cache[key])return state.cache[key];
- const d=state.data, si=spotIndex(spotId), spot=SPOTS()[si];
- if(!d.models[modelId]||si<0)return [];
- const w=d.models[modelId][si].hourly;
- const m=d.marine?d.marine[si].hourly:null;
- const cn=d.cond?d.cond[si].hourly:null;
- const pv=d.prev?d.prev[si].hourly:null;
- const mi={},ci={},pi={};
- if(m)m.time.forEach((tt,i)=>mi[tt]=i);
- if(cn)cn.time.forEach((tt,i)=>ci[tt]=i);
- if(pv)pv.time.forEach((tt,i)=>pi[tt]=i);
- let flow=null,maxFlow=0.0001;
- if(m&&m.sea_level_height_msl){
-  const h=m.sea_level_height_msl;
-  flow=h.map((_,i)=>{const a=h[i-1],b=h[i+1];return(a==null||b==null)?null:(b-a)/2});
-  const abs=flow.filter(v=>v!=null).map(Math.abs);
-  if(abs.length)maxFlow=Math.max(...abs,0.0001);
- }
- const now=Date.now(), out=[];
- for(let i=0;i<w.time.length;i+=3){
-  const tm=w.time[i], j=m?mi[tm]:undefined, k=cn?ci[tm]:undefined, q=pv?pi[tm]:undefined;
-  const g=key2=>(m&&j!==undefined&&m[key2]&&m[key2][j]!=null)?m[key2][j]:null;
-  const waveH=g('wave_height'),waveP=g('wave_period'),waveD=g('wave_direction');
-  const trains=TRAINS.map(tr=>({label:tr.label,col:tr.col,h:g(tr.p+'_height'),p:g(tr.p+'_period'),d:g(tr.p+'_direction')}))
-    .filter(x=>x.h!=null&&x.h>0.05);
-  const longest=trains.length?trains.reduce((a,b)=>((b.p||0)>(a.p||0)?b:a)):null;
-  const seaH=waveH!=null?waveH:(trains.length?Math.sqrt(trains.reduce((s,x)=>s+x.h*x.h,0)):0);
-  const kt=w.wind_speed_10m[i], dt=new Date(tm);
-  let fR=null,fDir=null;
-  if(flow&&j!==undefined&&flow[j]!=null){fR=Math.abs(flow[j])/maxFlow;fDir=flow[j]>=0?'flood':'ebb'}
-  const seaP=longest?(longest.h>=t.periodH?longest.p:0):(waveP||0);
-  out.push({time:tm,dt,hour:dt.getHours(),past:dt.getTime()<now,
-   kt,gust:w.wind_gusts_10m[i],dir:w.wind_direction_10m[i],mslp:w.pressure_msl[i],
-   waveH,waveP,waveD,trains,longest,
-   tide:(m&&j!==undefined&&m.sea_level_height_msl)?m.sea_level_height_msl[j]:null,
-   rainP:(cn&&k!==undefined&&cn.precipitation_probability)?cn.precipitation_probability[k]:null,
-   rainMm:(cn&&k!==undefined&&cn.precipitation)?cn.precipitation[k]:null,
-   temp:(cn&&k!==undefined&&cn.temperature_2m)?cn.temperature_2m[k]:null,
-   prev1:(pv&&q!==undefined&&pv.wind_speed_10m_previous_day1)?pv.wind_speed_10m_previous_day1[q]:null,
-   prev3:(pv&&q!==undefined&&pv.wind_speed_10m_previous_day3)?pv.wind_speed_10m_previous_day3[q]:null,
-   curV:g('ocean_current_velocity'),curD:g('ocean_current_direction'),
-   sst:g('sea_surface_temperature'),fR,fDir,
-   barRisk:!!(spot.bar&&fDir==='ebb'&&fR!=null&&fR>0.45&&seaH>=1.0),
-   lvl:verdict(kt,seaH,seaP,t,spot,fR,fDir)});
- }
- computeVis(out,spot);
- state.cache[key]=out;
- return out;
-}
-
 /* ============================ visibility engine ============================
    No model forecasts underwater visibility, so this reconstructs it from the
    physics that drive it. Three site types weight the terms differently.
@@ -675,8 +666,13 @@ const BED={
 
 /* Post-pass over the series: every term needs lookback, so it runs after the
    blocks are built rather than inside the loop. */
-function computeVis(out,spot){
+function computeVis(out,spot,turns){
  const type=spot.type||'shelf', d=spot.dMin||10, shel=spot.shelter!=null?spot.shelter:1;
+
+ // index maps onto the realistic range for this particular spot, because the
+ // same score means very different metres at Sykes and at the Seaway
+ const vMax=spot.vMax!=null?spot.vMax:(type==='oceanic'?32:type==='estuarine'?10:20);
+ const vMin=spot.vMin!=null?spot.vMin:(type==='oceanic'?9:type==='estuarine'?1:3);
  const at=i=>(i>=0&&i<out.length)?out[i]:null;
 
  // instantaneous bed stirring from all swell trains combined
@@ -747,7 +743,7 @@ function computeVis(out,spot){
    // ---- estuarine entrance ----
    // gate 1: only the last couple of hours of the flood are worth diving
    let tideQ=0.06, hrsToHigh=null;
-   const te=state.tideEvents;
+   const te=turns;
    if(te&&te.turns){
     const nh=te.turns.find(e=>e.kind==='H'&&e.t>=b.dt);
     if(nh){
@@ -774,7 +770,82 @@ function computeVis(out,spot){
      :'flood window on clean water';
   }
   b.visBand=visBand(b.vis);
+
+  b.visM=vMin+(vMax-vMin)*(b.vis/100);
+  b.vMax=vMax; b.vMin=vMin;
  });
+}
+
+
+/* Pure block builder. Given hourly arrays it produces the 3-hourly series the
+   whole app reads. series() feeds it live data, hindcast() feeds it archives. */
+function buildBlocks(w,m,cn,spot,t){
+ const mi={},ci={};
+ if(m)m.time.forEach((tt,i)=>mi[tt]=i);
+ if(cn)cn.time.forEach((tt,i)=>ci[tt]=i);
+ let flow=null,maxFlow=0.0001;
+ if(m&&m.sea_level_height_msl){
+  const h=m.sea_level_height_msl;
+  flow=h.map((_,i)=>{const a=h[i-1],b=h[i+1];return(a==null||b==null)?null:(b-a)/2});
+  const abs=flow.filter(v=>v!=null).map(Math.abs);
+  if(abs.length)maxFlow=Math.max(...abs,0.0001);
+ }
+ const now=Date.now(), out=[];
+ for(let i=0;i<w.time.length;i+=3){
+  const tm=w.time[i], j=m?mi[tm]:undefined, k=cn?ci[tm]:undefined;
+  const g=key2=>(m&&j!==undefined&&m[key2]&&m[key2][j]!=null)?m[key2][j]:null;
+  // conditions come from the dedicated feed when live, or the same call when archived
+  const src=(k!==undefined&&cn)?cn:w, si=(k!==undefined&&cn)?k:i;
+  const pick=key2=>(src&&src[key2]&&src[key2][si]!=null)?src[key2][si]:null;
+  const waveH=g('wave_height'),waveP=g('wave_period'),waveD=g('wave_direction');
+  const trains=TRAINS.map(tr=>({label:tr.label,col:tr.col,h:g(tr.p+'_height'),p:g(tr.p+'_period'),d:g(tr.p+'_direction')}))
+    .filter(x=>x.h!=null&&x.h>0.05);
+  const longest=trains.length?trains.reduce((a,b)=>((b.p||0)>(a.p||0)?b:a)):null;
+  const seaH=waveH!=null?waveH:(trains.length?Math.sqrt(trains.reduce((s,x)=>s+x.h*x.h,0)):0);
+  const kt=w.wind_speed_10m[i], dt=new Date(tm);
+  if(kt==null)continue;
+  let fR=null,fDir=null;
+  if(flow&&j!==undefined&&flow[j]!=null){fR=Math.abs(flow[j])/maxFlow;fDir=flow[j]>=0?'flood':'ebb'}
+  const seaP=longest?(longest.h>=t.periodH?longest.p:0):(waveP||0);
+  out.push({time:tm,dt,hour:dt.getHours(),past:dt.getTime()<now,
+   kt,gust:w.wind_gusts_10m?w.wind_gusts_10m[i]:kt,dir:w.wind_direction_10m[i],
+   mslp:w.pressure_msl?w.pressure_msl[i]:null,
+   waveH,waveP,waveD,trains,longest,
+   tide:(m&&j!==undefined&&m.sea_level_height_msl)?m.sea_level_height_msl[j]:null,
+   rainP:pick('precipitation_probability'),rainMm:pick('precipitation'),temp:pick('temperature_2m'),
+   prev1:null,prev3:null,
+   curV:g('ocean_current_velocity'),curD:g('ocean_current_direction'),
+   sst:g('sea_surface_temperature'),fR,fDir,
+   barRisk:!!(spot.bar&&fDir==='ebb'&&fR!=null&&fR>0.45&&seaH>=1.0),
+   lvl:verdict(kt,seaH,seaP,t,spot,fR,fDir)});
+ }
+ return out;
+}
+
+function series(spotId,modelId){
+ const t=thresholds();
+ const key=state.region+'|'+spotId+'|'+modelId+'|'+JSON.stringify(t);
+ if(state.cache[key])return state.cache[key];
+ const d=state.data, si=spotIndex(spotId), spot=SPOTS()[si];
+ if(!d.models[modelId]||si<0)return [];
+ const w=d.models[modelId][si].hourly;
+ const m=d.marine?d.marine[si].hourly:null;
+ const cn=d.cond?d.cond[si].hourly:null;
+ const pv=d.prev?d.prev[si].hourly:null;
+ const out=buildBlocks(w,m,cn,spot,t);
+ if(pv){
+  const pi={}; pv.time.forEach((tt,i)=>pi[tt]=i);
+  out.forEach(b=>{
+   const q=pi[b.time];
+   if(q!==undefined){
+    b.prev1=pv.wind_speed_10m_previous_day1?pv.wind_speed_10m_previous_day1[q]:null;
+    b.prev3=pv.wind_speed_10m_previous_day3?pv.wind_speed_10m_previous_day3[q]:null;
+   }
+  });
+ }
+ computeVis(out,spot,m?tideTurnsFrom(m):{turns:[]});
+ state.cache[key]=out;
+ return out;
 }
 
 function flowWord(r){
@@ -909,7 +980,7 @@ function labelLines(b){
   fD.format(b.dt).replace(',','').toUpperCase()+' '+pad2(b.hour)+':00',
   Math.round(b.kt)+' km/h '+compass(b.dir)+' g'+Math.round(b.gust),
   (b.waveH!=null?b.waveH.toFixed(1)+'m '+Math.round(b.waveP||0)+'s':'no sea')
-   +(b.tide!=null?'  tide '+b.tide.toFixed(1)+'m':'')
+   +(b.visM!=null?'  vis '+(b.visM<10?b.visM.toFixed(1):Math.round(b.visM))+'m':'')
  ];
 }
 function labelX(x){
@@ -1283,7 +1354,9 @@ function drawChart(){
    return '<rect x="'+(CPAD+i*cw).toFixed(1)+'" y="'+(vTop+vH-h).toFixed(1)+'" width="'+Math.max(1,cw-1).toFixed(1)
     +'" height="'+h.toFixed(1)+'" fill="'+b.visBand.col+'" opacity="0.85"/>';
   }).join('');
-  out+='<text x="4" y="'+(vTop+13)+'" fill="#8AA6B2" font-size="11" font-family="monospace">vis</text>';
+  const vc=v[0]&&v[0].vMax?v[0].vMax:30;
+  out+='<text x="4" y="'+(vTop+13)+'" fill="#8AA6B2" font-size="11" font-family="monospace">'+vc+'m</text>'
+   +'<text x="4" y="'+(vTop+vH-3)+'" fill="#8AA6B2" font-size="11" font-family="monospace">vis</text>';
  }
  if(need.ribbon){
   out+=v.map((b,i)=>'<rect x="'+(CPAD+i*cw).toFixed(1)+'" y="'+top.ribbon+'" width="'+Math.max(1,cw-1).toFixed(1)+'" height="'+TRACKH.ribbon+'" fill="'+[SEV[0],SEV[2],SEV[3]][b.lvl]+'"'+((b.hour<6||b.hour>18)?' opacity="0.45"':'')+'/>').join('');
@@ -1373,7 +1446,9 @@ function drawReadout(){
   +'<div><span class="k">drift</span> '+(b.curV!=null?(b.curV*3.6).toFixed(1)+' km/h '+(b.curD!=null?compass(b.curD):''):'—')+'</div>'
   +'<div><span class="k">ensemble</span> '+(q?'\u00b1'+((q.hi-q.lo)/2).toFixed(0)+' km/h / '+q.n+' members':'—')+'</div>'
   +(drift.length?'<div><span class="k">earlier runs</span> '+drift.join(', ')+' km/h</div>':'')
-  +'<div><span class="k">visibility</span> <span style="color:'+b.visBand.col+'">'+b.visBand.label+' '+Math.round(b.vis)+'</span></div>'
+  +'<div><span class="k">visibility</span> <span style="color:'+b.visBand.col+'">'
+    +(b.visM<10?b.visM.toFixed(1):Math.round(b.visM))+' m &middot; '+b.visBand.label+'</span></div>'
+  +'<div><span class="k">range here</span> '+b.vMin+'\u2013'+b.vMax+' m</div>'
   +'<div><span class="k">why</span> '+b.visWhy+'</div>'
   +'<div><span class="k">bed stir</span> '+(b.ub!=null?b.ub.toFixed(2)+'/'+b.uCrit.toFixed(2)+' m/s'+(b.ub>=b.uCrit?' over':''):'—')+'</div>'
   +'<div><span class="k">water mass</span> '+(b.ekman>0.2?'upwelling':b.ekman<-0.2?'EAC / downwelling':'neutral')
@@ -1684,13 +1759,51 @@ function drawOutlook(){
 }
 
 
-/* ---- dive log: capture what the model believed, next to what you saw ---- */
-function logRead(){try{return JSON.parse(store.get('divelog')||'[]')}catch(e){return []}}
-function logWrite(a){store.set('divelog',JSON.stringify(a.slice(-400)))}
+/* ============================== observation store =========================
+   Conditions are not stored: every driver is reconstructable from the archives
+   on demand. What cannot be reconstructed is what you actually saw, so that is
+   all this keeps.
+
+   Durability matters more than volume here. localStorage lives in Safari's
+   website data and one "clear" wipes it, so the store also reads a committed
+   file from the repo and merges. Export, commit, and the record is permanent.
+========================================================================== */
+const ENGINE_VERSION='vis-1.0';
+let repoObs=[];                                   // committed records, read-only
+
+function logLocal(){try{return JSON.parse(store.get('divelog')||'[]')}catch(e){return []}}
+function logRead(){
+ // merge committed and local, newest wins on id collision
+ const byId={};
+ repoObs.forEach(r=>{if(r&&r.id)byId[r.id]=r});
+ logLocal().forEach(r=>{if(r&&r.id)byId[r.id]=r; else if(r)byId['legacy_'+JSON.stringify(r.ts)+r.spot]=r});
+ return Object.values(byId).sort((a,b)=>String(a.logged||a.ts).localeCompare(String(b.logged||b.ts)));
+}
+function logWrite(a){
+ // only unexported records need to sit in localStorage
+ const repoIds=new Set(repoObs.map(r=>r.id));
+ store.set('divelog',JSON.stringify(a.filter(r=>!repoIds.has(r.id)).slice(-500)));
+}
+async function loadRepoObs(){
+ try{
+  const r=await fetch('data/observations.json?t='+Date.now(),{cache:'no-store'});
+  if(!r.ok)return;
+  const j=await r.json();
+  repoObs=Array.isArray(j)?j:(j.observations||[]);
+ }catch(e){repoObs=[]}
+}
+function storageHealth(){
+ const all=logRead(), repoIds=new Set(repoObs.map(r=>r.id));
+ const un=all.filter(r=>!repoIds.has(r.id)).length;
+ const bytes=(store.get('divelog')||'').length;
+ return {total:all.length, committed:repoObs.length, unexported:un, bytes};
+}
 function logSnapshot(){
  const b=state.chartSeries[state.cursor], sp=SPOT();
  const prim=b.trains.find(x=>x.label==='Primary');
  return {
+  id:'obs_'+b.time.replace(/[^0-9]/g,'')+'_'+sp.id+'_'+Math.random().toString(36).slice(2,7),
+  v:ENGINE_VERSION,
   ts:b.time, logged:new Date().toISOString(),
   region:state.region, spot:sp.id, spotName:sp.name, type:sp.type||'shelf', depth:sp.dMin||null,
   model:state.model,
@@ -1707,7 +1820,8 @@ function logSnapshot(){
   hrsToHigh:b.hrsToHigh!=null?+b.hrsToHigh.toFixed(2):null,
   plume:b.plume!=null?+b.plume.toFixed(3):null,
   visPredicted:b.vis!=null?Math.round(b.vis):null, visBand:b.visBand?b.visBand.label:null,
-  visObservedM:null
+  visPredictedM:b.visM!=null?+b.visM.toFixed(1):null, vMax:b.vMax, vMin:b.vMin,
+  visObservedM:null, obsWindKmh:null, obsSeaM:null, forecastRating:null, notes:null
  };
 }
 function renderLogCtx(){
@@ -1715,29 +1829,54 @@ function renderLogCtx(){
  const b=state.chartSeries[state.cursor];
  el.innerHTML='Will log <b>'+SPOT().name+'</b> at <b>'+fD.format(b.dt)+' '+pad2(b.hour)+':00</b>'
   +' (scrub the chart to change). Model predicts <b style="color:'+b.visBand.col+'">'
-  +b.visBand.label+' '+Math.round(b.vis)+'</b>.';
+  +(b.visM<10?b.visM.toFixed(1):Math.round(b.visM))+' m, '+b.visBand.label+'</b>.';
+}
+function renderHealth(){
+ const el=document.getElementById('logHealth'); if(!el)return;
+ const h=storageHealth();
+ const last=store.get('lastExport');
+ el.innerHTML='<b>'+h.total+'</b> records &middot; '+h.committed+' committed to the repo &middot; '
+  +(h.unexported?'<b class="bad">'+h.unexported+' only on this device</b>':'<b class="good">all backed up</b>')
+  +'<br>'+(last?'Last export '+last.slice(0,16).replace('T',' ')+'. ':'Never exported. ')
+  +'Local records live in Safari website data and are lost if you clear it. Export JSON, commit it to '
+  +'<b>data/observations.json</b> in the repo, and they become permanent and shared across your devices.';
 }
 function renderLog(){
  const rows=logRead(), el=document.getElementById('logList'); if(!el)return;
+ renderHealth();
  if(!rows.length){el.innerHTML='<div class="otext">No entries yet.</div>';renderLogCtx();return}
  const scored=rows.filter(r=>r.visObservedM!=null&&r.visPredicted!=null);
  let hdr='';
  if(scored.length>=3){
   // crude skill check: mean absolute error once observed metres are mapped to
   // the same 0-100 scale, 20 m treated as the practical ceiling
-  const err=scored.map(r=>Math.abs(Math.min(100,r.visObservedM/20*100)-r.visPredicted));
+  const err=scored.map(r=>Math.abs(r.visObservedM-(r.visPredictedM!=null?r.visPredictedM:0)));
   const mae=err.reduce((a,b)=>a+b,0)/err.length;
-  hdr='<div class="otext">'+scored.length+' scored entries. Mean absolute error <b>'+mae.toFixed(0)
-   +'</b> points on the 0-100 scale. Under 15 is decent, over 30 means a term has the wrong sign or weight.</div>';
+  const bias=scored.reduce((a,r)=>a+(r.visObservedM-(r.visPredictedM||0)),0)/scored.length;
+  // if the model is uniformly low or high at a spot, the ceiling is wrong
+  const bySpot={};
+  scored.forEach(r=>{(bySpot[r.spotName]=bySpot[r.spotName]||[]).push(r)});
+  const hints=Object.entries(bySpot).filter(([,a])=>a.length>=4).map(([n,a])=>{
+   const bestSeen=Math.max(...a.map(r=>r.visObservedM));
+   const cap=a[0].vMax;
+   if(bestSeen>cap*1.15)return n+': you have seen '+bestSeen+' m against a ceiling of '+cap+' m, raise it';
+   if(bestSeen<cap*0.55)return n+': best seen is only '+bestSeen+' m against a ceiling of '+cap+' m, lower it';
+   return null;
+  }).filter(Boolean);
+  hdr='<div class="otext">'+scored.length+' scored entries. Mean absolute error <b>'+mae.toFixed(1)
+   +' m</b>, bias <b>'+(bias>0?'+':'')+bias.toFixed(1)+' m</b> ('+(bias>0?'model reads low':'model reads high')+').'
+   +'<br>Under 3 m error is useful. Over 6 m means a term has the wrong sign or weight.'
+   +(hints.length?'<br>'+hints.join('<br>'):'')+'</div>';
  }
  el.innerHTML=hdr+rows.slice().reverse().slice(0,25).map((r,i)=>{
   const idx=rows.length-1-i;
-  const gap=(r.visObservedM!=null&&r.visPredicted!=null)
-   ? Math.round(Math.min(100,r.visObservedM/20*100)-r.visPredicted) : null;
+  const gap=(r.visObservedM!=null&&r.visPredictedM!=null)?(r.visObservedM-r.visPredictedM):null;
   return '<div class="logrow"><span>'+r.spotName+' '+r.ts.replace('T',' ')
-   +'<br><span style="color:var(--dim)">pred '+r.visPredicted+' &middot; saw '
-   +(r.visObservedM!=null?r.visObservedM+' m':'—')+'</span></span>'
-   +'<span class="'+(gap!=null&&Math.abs(gap)>30?'err':'')+'">'+(gap!=null?(gap>0?'+':'')+gap:'')+'</span>'
+   +'<br><span style="color:var(--dim)">pred '+(r.visPredictedM!=null?r.visPredictedM+' m':r.visPredicted)
+   +' &middot; saw '+(r.visObservedM!=null?r.visObservedM+' m':'—')
+   +(r.forecastRating?' &middot; '+r.forecastRating:'')
+   +(r.notes?'<br>'+r.notes.replace(/</g,'&lt;'):'')+'</span></span>'
+   +'<span class="'+(gap!=null&&Math.abs(gap)>6?'err':'')+'">'+(gap!=null?(gap>0?'+':'')+gap.toFixed(1)+'m':'')+'</span>'
    +'<button data-del="'+idx+'" aria-label="delete">&times;</button></div>';
  }).join('');
  el.onclick=e=>{
@@ -1750,9 +1889,46 @@ function logSave(){
  const inp=document.getElementById('logVis');
  const v=parseFloat(inp.value);
  if(isNaN(v)||v<0){inp.focus();return}
- const snap=logSnapshot(); snap.visObservedM=v;
+ const num=id=>{const x=parseFloat(document.getElementById(id).value);return isNaN(x)?null:x};
+ const snap=logSnapshot();
+ snap.visObservedM=v;
+ snap.obsWindKmh=num('logWind');
+ snap.obsSeaM=num('logSea');
+ snap.forecastRating=document.getElementById('logRate').value||null;
+ snap.notes=document.getElementById('logNote').value.trim()||null;
  const a=logRead(); a.push(snap); logWrite(a);
- inp.value=''; renderLog();
+ ['logVis','logWind','logSea','logNote'].forEach(i=>document.getElementById(i).value='');
+ document.getElementById('logRate').value='';
+ store.set('lastLogAt',new Date().toISOString());
+ renderLog();
+}
+function download(name,text,mime){
+ const url=URL.createObjectURL(new Blob([text],{type:mime}));
+ const a=document.createElement('a');
+ a.href=url; a.download=name; a.click();
+ setTimeout(()=>URL.revokeObjectURL(url),2000);
+}
+function logExportJSON(){
+ const rows=logRead(); if(!rows.length)return;
+ download('observations.json',JSON.stringify(rows,null,1),'application/json');
+ store.set('lastExport',new Date().toISOString());
+ renderLog();
+}
+function logImport(file){
+ const fr=new FileReader();
+ fr.onload=()=>{
+  try{
+   const j=JSON.parse(fr.result);
+   const inc=Array.isArray(j)?j:(j.observations||[]);
+   const cur=logRead(), byId={};
+   cur.forEach(r=>{if(r.id)byId[r.id]=r});
+   let added=0;
+   inc.forEach(r=>{if(r&&r.id&&!byId[r.id]){byId[r.id]=r;added++}});
+   logWrite(Object.values(byId)); renderLog();
+   alert('Imported '+added+' new records.');
+  }catch(e){alert('Could not read that file: '+e.message)}
+ };
+ fr.readAsText(file);
 }
 function logExport(){
  const rows=logRead(); if(!rows.length)return;
@@ -1764,6 +1940,101 @@ function logExport(){
  const a=document.createElement('a');
  a.href=url; a.download='divelog.csv'; a.click();
  setTimeout(()=>URL.revokeObjectURL(url),2000);
+}
+
+/* ======================= hindcast =======================================
+   Every driver of visibility is reconstructable from the archives, so a date
+   and a remembered number is enough to calibrate against. No need to have
+   recorded the conditions at the time.
+======================================================================== */
+const archWindURL=(sp,a,b)=>'https://archive-api.open-meteo.com/v1/archive?'+new URLSearchParams({
+ latitude:sp.lat,longitude:sp.lon,start_date:a,end_date:b,
+ hourly:'wind_speed_10m,wind_direction_10m,wind_gusts_10m,pressure_msl,precipitation,temperature_2m',
+ wind_speed_unit:'kmh',timezone:TZ});
+const archMarineURL=(sp,a,b)=>'https://marine-api.open-meteo.com/v1/marine?'+new URLSearchParams({
+ latitude:sp.lat,longitude:sp.lon,start_date:a,end_date:b,
+ hourly:MARINE_BASE.concat(MARINE_TRAINS).join(','),timezone:TZ});
+
+const shiftDays=(iso,n)=>{const d=new Date(iso+'T00:00');d.setDate(d.getDate()+n);return iso0(d)};
+const iso0=d=>d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());
+
+let hind=null;   // {block, spot, date, hour}
+
+async function runHindcast(){
+ const dateEl=document.getElementById('hcDate'), hourEl=document.getElementById('hcHour');
+ const out=document.getElementById('hcOut');
+ const date=dateEl.value;
+ if(!date){dateEl.focus();return}
+ const hour=parseInt(hourEl.value,10), spot=SPOT();
+ // the lag terms need the days before, so pull a window either side
+ const from=shiftDays(date,-5), to=shiftDays(date,1);
+ out.innerHTML='<div class="skel" style="height:40px"></div>';
+ const [w,m]=await Promise.all([
+  settle(getJSON(archWindURL(spot,from,to))),
+  settle(getJSON(archMarineURL(spot,from,to)))
+ ]);
+ if(!w.ok){out.innerHTML='<div class="otext bad">Archive unavailable: '+w.error+'</div>';return}
+ const wh=w.value[0].hourly, mh=m.ok?m.value[0].hourly:null;
+ if(!mh)out.innerHTML='<div class="otext">No wave archive for this date, visibility will be wind-only and unreliable.</div>';
+ const t=thresholds();
+ const blocks=buildBlocks(wh,mh,null,spot,t);
+ computeVis(blocks,spot,mh?tideTurnsFrom(mh):{turns:[]});
+ const want=date+'T'+pad2(hour)+':00';
+ const b=blocks.find(x=>x.time===want)||blocks.find(x=>x.time.startsWith(date))||null;
+ if(!b){out.innerHTML='<div class="otext bad">No data returned for that date.</div>';return}
+ hind={block:b,spot,date,hour};
+ const prim=b.trains.find(x=>x.label==='Primary');
+ out.innerHTML='<div class="hcres">'
+  +'<div class="hcbig" style="color:'+b.visBand.col+'">'
+   +(b.visM<10?b.visM.toFixed(1):Math.round(b.visM))+' m &middot; '+b.visBand.label+'</div>'
+  +'<div class="otext" style="margin-top:2px">'+fD.format(b.dt)+' '+pad2(b.hour)+':00 at <b>'+spot.name+'</b><br>'
+  +'wind '+Math.round(b.kt)+' km/h '+compass(b.dir)+' &middot; sea '+(b.waveH!=null?b.waveH.toFixed(1)+' m':'—')
+  +(prim?' &middot; swell '+prim.h.toFixed(1)+' m / '+Math.round(prim.p||0)+'s '+(prim.d!=null?compass(prim.d):''):'')
+  +'<br>bed stir '+(b.ub!=null?b.ub.toFixed(2):'—')+' m/s &middot; water mass '
+  +(b.ekman>0.2?'upwelling':b.ekman<-0.2?'EAC':'neutral')
+  +(b.sst!=null?' '+b.sst.toFixed(1)+'\u00b0':'')
+  +' &middot; rain 72h '+(b.rain72!=null?b.rain72.toFixed(0):'0')+' mm'
+  +(b.hrsToHigh!=null?'<br>'+b.hrsToHigh.toFixed(1)+' h to high, '+(b.fDir==='flood'?'rising':'falling'):'')
+  +'<br><i>'+b.visWhy+'</i></div></div>'
+  +'<div class="logform"><label for="hcVis">You actually saw (m)</label>'
+  +'<input id="hcVis" type="number" inputmode="decimal" step="0.5" placeholder="m">'
+  +'<input id="hcNote" type="text" placeholder="notes, optional" style="flex:1;min-width:140px;text-align:left">'
+  +'<button class="btn" id="hcSave">Add to databank</button></div>';
+ document.getElementById('hcSave').addEventListener('click',saveHindcast);
+}
+
+function saveHindcast(){
+ if(!hind)return;
+ const v=parseFloat(document.getElementById('hcVis').value);
+ if(isNaN(v)||v<0){document.getElementById('hcVis').focus();return}
+ const b=hind.block, sp=hind.spot, prim=b.trains.find(x=>x.label==='Primary');
+ const rec={
+  id:'obs_'+b.time.replace(/[^0-9]/g,'')+'_'+sp.id+'_'+Math.random().toString(36).slice(2,7),
+  v:ENGINE_VERSION, source:'hindcast',
+  ts:b.time, logged:new Date().toISOString(),
+  region:state.region, spot:sp.id, spotName:sp.name, type:sp.type||'shelf', depth:sp.dMin||null,
+  model:'era5_archive',
+  windKmh:+b.kt.toFixed(1), gustKmh:b.gust!=null?+b.gust.toFixed(1):null, windDir:Math.round(b.dir),
+  seaM:b.waveH!=null?+b.waveH.toFixed(2):null, seaS:b.waveP!=null?+b.waveP.toFixed(1):null,
+  swellM:prim?+prim.h.toFixed(2):null, swellS:prim?+(prim.p||0).toFixed(1):null,
+  swellDir:prim&&prim.d!=null?Math.round(prim.d):null,
+  ubMs:b.ub!=null?+b.ub.toFixed(3):null, ekman:b.ekman!=null?+b.ekman.toFixed(3):null,
+  sstC:b.sst!=null?+b.sst.toFixed(2):null, sstAnom:b.sstAnom!=null?+b.sstAnom.toFixed(2):null,
+  rain72mm:b.rain72!=null?+b.rain72.toFixed(1):null,
+  tideM:b.tide!=null?+b.tide.toFixed(2):null, tideDir:b.fDir||null,
+  hrsToHigh:b.hrsToHigh!=null?+b.hrsToHigh.toFixed(2):null,
+  plume:b.plume!=null?+b.plume.toFixed(3):null,
+  visPredicted:Math.round(b.vis), visPredictedM:+b.visM.toFixed(1),
+  visBand:b.visBand.label, vMax:b.vMax, vMin:b.vMin,
+  visObservedM:v, obsWindKmh:null, obsSeaM:null, forecastRating:null,
+  notes:document.getElementById('hcNote').value.trim()||null
+ };
+ const a=logRead(); a.push(rec); logWrite(a);
+ document.getElementById('hcVis').value=''; document.getElementById('hcNote').value='';
+ renderLog();
+ document.getElementById('hcOut').innerHTML='<div class="otext good">Added. '
+  +'Predicted '+rec.visPredictedM+' m, you saw '+v+' m. Enter another date above.</div>';
+ hind=null;
 }
 
 /* ---- chips ---- */
@@ -1819,8 +2090,18 @@ document.getElementById('outlookDetails').addEventListener('toggle',e=>{if(e.tar
 document.getElementById('logDetails').addEventListener('toggle',e=>{if(e.target.open)renderLog()});
 document.getElementById('logSave').addEventListener('click',logSave);
 document.getElementById('logExport').addEventListener('click',logExport);
+document.getElementById('logExportJson').addEventListener('click',logExportJSON);
+document.getElementById('hcRun').addEventListener('click',runHindcast);
+document.getElementById('logImport').addEventListener('change',e=>{
+ if(e.target.files&&e.target.files[0])logImport(e.target.files[0]);
+ e.target.value='';
+});
 document.getElementById('logClear').addEventListener('click',()=>{
- if(confirm('Delete every logged dive? This cannot be undone.')){logWrite([]);renderLog()}
+ const h=storageHealth();
+ if(h.unexported>0&&!confirm(h.unexported+' records have not been exported yet and will be lost. Continue?'))return;
+ if(confirm('Clear local records? Anything already committed to the repo stays.')){
+  store.set('divelog','[]');renderLog();
+ }
 });
 let rzT=null;
 window.addEventListener('resize',()=>{
