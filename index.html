@@ -690,14 +690,16 @@ const BED={
 
 /* Post-pass over the series: every term needs lookback, so it runs after the
    blocks are built rather than inside the loop. */
-function computeVis(out,spot,turns){
+function computeVis(out,spot,turns,step){
  const type=spot.type||'shelf', d=spot.dMin||10, shel=spot.shelter!=null?spot.shelter:1;
 
  // index maps onto the realistic range for this particular spot, because the
  // same score means very different metres at Sykes and at the Seaway
  const vMax=spot.vMax!=null?spot.vMax:(type==='oceanic'?32:type==='estuarine'?10:20);
  const vMin=spot.vMin!=null?spot.vMin:(type==='oceanic'?9:type==='estuarine'?1:3);
+ const st=step||out.step||3;
  const at=i=>(i>=0&&i<out.length)?out[i]:null;
+ const back=h=>Math.round(h/st);          // hours back -> index offset
 
  // instantaneous bed stirring from all swell trains combined
  out.forEach(b=>{
@@ -713,7 +715,7 @@ function computeVis(out,spot,turns){
   // --- settling: stirring decays with a ~14 h half life ---
   let stirLag=0,wS=0;
   for(let h=0;h<=48;h+=3){
-   const p=at(i-h/3); if(!p)continue;
+   const p=at(i-back(h)); if(!p)continue;
    const w=Math.pow(0.5,h/14);
    stirLag+=w*p.stir; wS+=w;
   }
@@ -724,7 +726,7 @@ function computeVis(out,spot,turns){
   // southerly (downwelling, clean EAC water pushed inshore)
   let ek=0,wE=0;
   for(let h=6;h<=84;h+=3){
-   const p=at(i-h/3); if(!p)continue;
+   const p=at(i-back(h)); if(!p)continue;
    const w=Math.exp(-Math.pow((h-42)/26,2));
    ek+=w*Math.min(1,Math.pow(p.kt/40,2))*Math.cos(p.dir*Math.PI/180);
    wE+=w;
@@ -734,14 +736,14 @@ function computeVis(out,spot,turns){
   // --- SST anomaly against the trailing five days: warm means EAC is in ---
   let ss=0,ns=0;
   for(let h=0;h<=120;h+=3){
-   const p=at(i-h/3); if(!p||p.sst==null)continue;
+   const p=at(i-back(h)); if(!p||p.sst==null)continue;
    ss+=p.sst; ns++;
   }
   b.sstAnom=(ns>4&&b.sst!=null)?(b.sst-ss/ns):0;
 
   // --- catchment rainfall over 72 h ---
   let rain=0;
-  for(let h=0;h<=72;h+=3){const p=at(i-h/3); if(p&&p.rainMm)rain+=p.rainMm}
+  for(let h=0;h<=72;h+=st){const p=at(i-back(h)); if(p&&p.rainMm)rain+=p.rainMm}
   b.rain72=rain;
 
   // ---- offshore ceiling, shared by shelf and estuarine ----
@@ -782,7 +784,7 @@ function computeVis(out,spot,turns){
    // flood is about to draw from. Keys off wind 6-14 h earlier, not now.
    let pr=0,wP=0;
    for(let h=6;h<=14;h+=1){
-    const p=at(i-Math.round(h/3)); if(!p)continue;
+    const p=at(i-back(h)); if(!p)continue;
     pr+=Math.min(1,Math.pow(p.kt/35,2))*Math.max(0,Math.cos(p.dir*Math.PI/180));
     wP++;
    }
@@ -803,7 +805,7 @@ function computeVis(out,spot,turns){
 
 /* Pure block builder. Given hourly arrays it produces the 3-hourly series the
    whole app reads. series() feeds it live data, hindcast() feeds it archives. */
-function buildBlocks(w,m,cn,spot,t){
+function buildBlocks(w,m,cn,spot,t,step){
  const mi={},ci={};
  if(m)m.time.forEach((tt,i)=>mi[tt]=i);
  if(cn)cn.time.forEach((tt,i)=>ci[tt]=i);
@@ -815,7 +817,8 @@ function buildBlocks(w,m,cn,spot,t){
   if(abs.length)maxFlow=Math.max(...abs,0.0001);
  }
  const now=Date.now(), out=[];
- for(let i=0;i<w.time.length;i+=3){
+ const st=step||3;
+ for(let i=0;i<w.time.length;i+=st){
   const tm=w.time[i], j=m?mi[tm]:undefined, k=cn?ci[tm]:undefined;
   const g=key2=>(m&&j!==undefined&&m[key2]&&m[key2][j]!=null)?m[key2][j]:null;
   // conditions come from the dedicated feed when live, or the same call when archived
@@ -843,6 +846,7 @@ function buildBlocks(w,m,cn,spot,t){
    barRisk:!!(spot.bar&&fDir==='ebb'&&fR!=null&&fR>0.45&&seaH>=1.0),
    lvl:verdict(kt,seaH,seaP,t,spot,fR,fDir)});
  }
+ out.step=st;
  return out;
 }
 
@@ -867,7 +871,7 @@ function series(spotId,modelId){
    }
   });
  }
- computeVis(out,spot,m?tideTurnsFrom(m):{turns:[]});
+ computeVis(out,spot,m?tideTurnsFrom(m):{turns:[]},3);
  state.cache[key]=out;
  return out;
 }
@@ -2001,8 +2005,8 @@ async function runHindcast(){
  const wh=w.value[0].hourly, mh=m.ok?m.value[0].hourly:null;
  if(!mh)out.innerHTML='<div class="otext">No wave archive for this date, visibility will be wind-only and unreliable.</div>';
  const t=thresholds();
- const blocks=buildBlocks(wh,mh,null,spot,t);
- computeVis(blocks,spot,mh?tideTurnsFrom(mh):{turns:[]});
+ const blocks=buildBlocks(wh,mh,null,spot,t,1);   // hourly: the tide gate is sharp
+ computeVis(blocks,spot,mh?tideTurnsFrom(mh):{turns:[]},1);
  const want=date+'T'+pad2(hour)+':00';
  const b=blocks.find(x=>x.time===want)||blocks.find(x=>x.time.startsWith(date))||null;
  if(!b){out.innerHTML='<div class="otext bad">No data returned for that date.</div>';return}
@@ -2161,8 +2165,8 @@ async function runBulk(){
   const A=await archWindow(spot,r.date);
   if(!A.w){r.error='archive unavailable';done.push(r);continue}
   const turns=A.m?tideTurnsFrom(A.m):{turns:[]};
-  const blocks=buildBlocks(A.w,A.m,null,spot,t);
-  computeVis(blocks,spot,turns);
+  const blocks=buildBlocks(A.w,A.m,null,spot,t,1);  // hourly: the tide gate is sharp
+  computeVis(blocks,spot,turns,1);
   const sameDay=blocks.filter(b=>b.time.startsWith(r.date));
   if(!sameDay.length){r.error='no data for that date';done.push(r);continue}
 
@@ -2184,6 +2188,7 @@ async function runBulk(){
   // nearest 3-hourly block
   const b=sameDay.reduce((best,x)=>Math.abs(x.dt-target)<Math.abs(best.dt-target)?x:best,sameDay[0]);
   r.block=b;
+  r.snapMin=Math.round(Math.abs(b.dt-target)/60000);
   if(existing.has(b.time+'|'+spot.id)){r.dup=true;done.push(r);continue}
 
   const prim=b.trains.find(x=>x.label==='Primary');
@@ -2228,7 +2233,8 @@ async function runBulk(){
    const over=r.vis>r.rec.vMax;
    return '<div class="brow"><span>'+r.date.slice(5)+'</span>'
     +'<span>'+r.rec.spotName.replace('Seaway ','S.')+'</span>'
-    +'<span>'+fT.format(r.resolved)+(r.onHigh?'*':'')+'</span>'
+    +'<span>'+fT.format(r.resolved)+(r.onHigh?'*':'')
+     +(r.snapMin>35?'<br><span class="err">snap '+r.snapMin+'m</span>':'')+'</span>'
     +'<span>'+Math.round(r.rec.windKmh)+' '+compass(r.rec.windDir)+'</span>'
     +'<span>'+r.rec.visPredictedM+'</span>'
     +'<span'+(over?' class="err" title="above this spot\u2019s ceiling of '+r.rec.vMax+' m"':'')+'>'+r.vis+'</span>'
