@@ -174,10 +174,13 @@ details[open] summary::after{content:' −'}
   padding:10px;border-radius:2px;resize:vertical}
 #bulkText:focus-visible{outline:2px solid var(--shoal);outline-offset:1px}
 .bulktbl{font-family:'IBM Plex Mono',monospace;font-size:12px;margin-top:12px}
-.bhead,.brow{display:grid;grid-template-columns:52px 58px 74px 46px 40px 1fr;gap:6px;
+.bhead,.brow{display:grid;grid-template-columns:46px 62px 54px 66px 44px 38px 1fr;gap:5px;
   padding:5px 0;border-top:1px dotted var(--ink-3)}
 .bhead{color:var(--dim);border-top:none;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase}
-.brow.err{color:var(--amber);grid-template-columns:1fr}
+.brow.err,.brow.hdr,.brow.dup{grid-template-columns:1fr}
+.brow.err{color:var(--magenta)}
+.brow.hdr{color:var(--shoal)}
+.brow.dup{color:var(--dim)}
 .brow .err{color:var(--magenta)}
 .otext .good{color:var(--drying)}
 .logform{display:flex;flex-wrap:wrap;gap:9px;align-items:center;margin-top:12px}
@@ -335,7 +338,11 @@ details[open] summary::after{content:' −'}
         <div class="otext">One per line: a date, a number, and optionally a time or the word
           "high". A bare line naming a spot switches which spot the following lines belong to.</div>
         <textarea id="bulkText" rows="6" placeholder="Seaway&#10;8/8/26&#9;8m at 3:15pm&#10;21/7&#9;1.5m on high&#10;9/7&#9;12m on high"></textarea>
-        <div class="logform"><button class="btn" id="bulkRun">Reconstruct batch</button></div>
+        <div class="logform">
+          <label for="bulkSpot">Rows without a spot header go to</label>
+          <select id="bulkSpot"></select>
+          <button class="btn" id="bulkRun">Reconstruct batch</button>
+        </div>
         <div id="bulkOut"></div>
       </div>
       <div id="logList"></div>
@@ -2082,7 +2089,12 @@ function parseBulk(text,defaultSpotId){
    });
    // "Seaway" matches both the wall and the bar: prefer the dive site
    const pick=cand.find(sp=>sp.name.toLowerCase()===q)||cand.find(sp=>!sp.bar)||cand[0];
-   if(pick){spotId=pick.id;return}
+   if(pick){spotId=pick.id;rows.push({header:pick.name,line});return}
+   if(q.length>2){
+    rows.push({line,error:'not a spot in this region. Try one of: '
+      +SPOTS().map(sp=>sp.name).join(', ')});
+    return;
+   }
   }
 
   const dm=line.match(/(\d{1,2})\s*[\/\-.]\s*(\d{1,2})(?:\s*[\/\-.]\s*(\d{2,4}))?/);
@@ -2136,7 +2148,8 @@ async function archWindow(spot,date){
 
 async function runBulk(){
  const ta=document.getElementById('bulkText'), out=document.getElementById('bulkOut');
- const rows=parseBulk(ta.value,state.spot);
+ const sel=document.getElementById('bulkSpot');
+ const rows=parseBulk(ta.value,(sel&&sel.value)||state.spot);
  if(!rows.length){out.innerHTML='<div class="otext">Nothing to read.</div>';return}
  const t=thresholds(), existing=new Set(logRead().map(r=>r.ts+'|'+r.spot));
  const done=[];
@@ -2206,17 +2219,23 @@ async function runBulk(){
  const bias=gaps.length?gaps.reduce((x,y)=>x+y,0)/gaps.length:null;
 
  out.innerHTML='<div class="bulktbl">'
-  +'<div class="bhead"><span>date</span><span>time</span><span>wind</span><span>pred</span><span>saw</span><span>gap</span></div>'
+  +'<div class="bhead"><span>date</span><span>spot</span><span>time</span><span>wind</span><span>pred</span><span>saw</span><span>gap</span></div>'
   +done.map(r=>{
-   if(r.error)return '<div class="brow err"><span colspan="6">'+r.line+' &mdash; '+r.error+'</span></div>';
-   if(r.dup)return '<div class="brow"><span>'+r.date+'</span><span colspan="5">already in the databank</span></div>';
+   if(r.header)return '<div class="brow hdr"><span>&rarr; following rows: <b>'+r.header+'</b></span></div>';
+   if(r.error)return '<div class="brow err"><span>'+r.line+' &mdash; '+r.error+'</span></div>';
+   if(r.dup)return '<div class="brow dup"><span>'+r.date+' &mdash; already in the databank</span></div>';
    const g=r.vis-r.rec.visPredictedM;
+   const over=r.vis>r.rec.vMax;
    return '<div class="brow"><span>'+r.date.slice(5)+'</span>'
+    +'<span>'+r.rec.spotName.replace('Seaway ','S.')+'</span>'
     +'<span>'+fT.format(r.resolved)+(r.onHigh?'*':'')+'</span>'
     +'<span>'+Math.round(r.rec.windKmh)+' '+compass(r.rec.windDir)+'</span>'
-    +'<span>'+r.rec.visPredictedM+'</span><span>'+r.vis+'</span>'
+    +'<span>'+r.rec.visPredictedM+'</span>'
+    +'<span'+(over?' class="err" title="above this spot\u2019s ceiling of '+r.rec.vMax+' m"':'')+'>'+r.vis+'</span>'
     +'<span class="'+(Math.abs(g)>6?'err':'')+'">'+(g>0?'+':'')+g.toFixed(1)+'</span></div>';
   }).join('')+'</div>'
+  +(good.some(r=>r.vis>r.rec.vMax)?'<div class="otext bad">Some observations are above that spot\u2019s '
+    +'ceiling, so either the ceiling is too low or the rows went to the wrong spot. Check the spot column.</div>':'')
   +(mae!=null?'<div class="otext">Added <b>'+good.length+'</b>. Mean error <b>'+mae.toFixed(1)
     +' m</b>, bias <b>'+(bias>0?'+':'')+bias.toFixed(1)+' m</b> ('
     +(bias>0?'model reads low':'model reads high')+').<br>'
@@ -2244,6 +2263,7 @@ function buildSpotChips(){
  });
  const s=SPOT();
  document.getElementById('reefNote').innerHTML=(s.bar?'<b>Bar entrance. </b>':'')+s.note;
+ buildBulkSpotSelect();
 }
 function buildModelChips(){
  chipRow(document.getElementById('models'),MODELS,state.model,
@@ -2278,6 +2298,10 @@ document.getElementById('logSave').addEventListener('click',logSave);
 document.getElementById('logExport').addEventListener('click',logExport);
 document.getElementById('logExportJson').addEventListener('click',logExportJSON);
 document.getElementById('hcRun').addEventListener('click',runHindcast);
+function buildBulkSpotSelect(){
+ const el=document.getElementById('bulkSpot'); if(!el)return;
+ el.innerHTML=SPOTS().map(sp=>'<option value="'+sp.id+'"'+(sp.id===state.spot?' selected':'')+'>'+sp.name+'</option>').join('');
+}
 document.getElementById('bulkRun').addEventListener('click',runBulk);
 document.getElementById('logImport').addEventListener('change',e=>{
  if(e.target.files&&e.target.files[0])logImport(e.target.files[0]);
