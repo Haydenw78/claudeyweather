@@ -173,6 +173,17 @@ details[open] summary::after{content:' −'}
   color:var(--buff);font-family:'IBM Plex Mono',monospace;font-size:13px;line-height:1.6;
   padding:10px;border-radius:2px;resize:vertical}
 #bulkText:focus-visible{outline:2px solid var(--shoal);outline-offset:1px}
+.caltbl{font-family:'IBM Plex Mono',monospace;font-size:12px;margin-top:10px}
+.chead,.crow{display:grid;grid-template-columns:104px 46px 100px 1fr;gap:8px;align-items:center;
+  padding:5px 0;border-top:1px dotted var(--ink-3)}
+.chead{color:var(--dim);border-top:none;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase}
+.crow2{display:grid;grid-template-columns:46px 40px 44px 66px 40px 42px 1fr;gap:6px;
+  padding:5px 0;border-top:1px dotted var(--ink-3)}
+.cbar{display:inline-flex;align-items:center;width:100px}
+.cbar i{display:block;height:7px;border-radius:1px}
+.cbar b{display:block;width:1px;height:11px;background:var(--hairline)}
+.cg{color:var(--drying)} .cb{color:var(--magenta)} .cw{color:var(--dim)}
+.otext .bad{color:var(--magenta)}
 .bulktbl{font-family:'IBM Plex Mono',monospace;font-size:12px;margin-top:12px}
 .bhead,.brow{display:grid;grid-template-columns:46px 62px 54px 66px 44px 38px 1fr;gap:5px;
   padding:5px 0;border-top:1px dotted var(--ink-3)}
@@ -346,7 +357,9 @@ details[open] summary::after{content:' −'}
         <div id="bulkOut"></div>
       </div>
       <div id="logList"></div>
-      <div class="otext" id="logHealth"></div>
+      <div class="panel-label" style="margin-top:20px">What is actually driving it</div>
+      <div id="calBox"></div>
+      <div class="otext" id="logHealth" style="margin-top:18px"></div>
       <div class="logform" style="margin-top:10px">
         <button class="btn" id="logExportJson">Export JSON</button>
         <button class="btn" id="logExport">Export CSV</button>
@@ -1871,7 +1884,7 @@ function renderHealth(){
 }
 function renderLog(){
  const rows=logRead(), el=document.getElementById('logList'); if(!el)return;
- renderHealth();
+ renderHealth(); renderCalibration();
  if(!rows.length){el.innerHTML='<div class="otext">No entries yet.</div>';renderLogCtx();return}
  const scored=rows.filter(r=>r.visObservedM!=null&&r.visPredicted!=null);
  let hdr='';
@@ -2246,6 +2259,103 @@ async function runBulk(){
     +' m</b>, bias <b>'+(bias>0?'+':'')+bias.toFixed(1)+' m</b> ('
     +(bias>0?'model reads low':'model reads high')+').<br>'
     +'* resolved to '+HIGH_OFFSET_H+' h before the actual high tide.</div>':'');
+}
+
+
+/* ====================== calibration diagnostics =========================
+   With few records you cannot fit anything, but you can see which driver
+   actually separates a good day from a bad one. Spearman rank correlation is
+   used because it is robust to outliers and does not assume a straight line.
+======================================================================== */
+const DRIVERS=[
+ {k:'windKmh',   label:'wind speed',        want:'-', note:'stronger wind should mean worse vis'},
+ {k:'northerly', label:'northerly (Ekman)', want:'-', note:'northerly should mean worse vis'},
+ {k:'ekman',     label:'upwelling index',   want:'-', note:'upwelling should mean worse vis'},
+ {k:'ubMs',      label:'bed stirring',      want:'-', note:'more bed stress should mean worse vis'},
+ {k:'seaM',      label:'sea height',        want:'-', note:'bigger sea should mean worse vis'},
+ {k:'swellS',    label:'swell period',      want:'-', note:'longer period reaches deeper'},
+ {k:'rain72mm',  label:'rain, 72 h',        want:'-', note:'runoff should mean worse vis'},
+ {k:'sstC',      label:'sea temperature',   want:'+', note:'warm means EAC water, should be clearer'},
+ {k:'sstAnom',   label:'temp anomaly',      want:'+', note:'warmer than recent should be clearer'},
+ {k:'hrsToHigh', label:'hours to high',     want:'?', note:'estuarine sites only'},
+ {k:'plume',     label:'plume return',      want:'-', note:'ebb plume pushed back should mean worse'},
+ {k:'tideM',     label:'tide height',       want:'?', note:''}
+];
+function rank(a){
+ const idx=a.map((v,i)=>[v,i]).sort((x,y)=>x[0]-y[0]);
+ const r=new Array(a.length);
+ let i=0;
+ while(i<idx.length){
+  let j=i; while(j+1<idx.length&&idx[j+1][0]===idx[i][0])j++;
+  const avg=(i+j)/2+1;
+  for(let k=i;k<=j;k++)r[idx[k][1]]=avg;
+  i=j+1;
+ }
+ return r;
+}
+function spearman(x,y){
+ const n=x.length; if(n<3)return null;
+ const rx=rank(x), ry=rank(y);
+ const mx=rx.reduce((a,b)=>a+b,0)/n, my=ry.reduce((a,b)=>a+b,0)/n;
+ let num=0,dx=0,dy=0;
+ for(let i=0;i<n;i++){const a=rx[i]-mx,b=ry[i]-my;num+=a*b;dx+=a*a;dy+=b*b}
+ return (dx&&dy)?num/Math.sqrt(dx*dy):null;
+}
+function renderCalibration(){
+ const el=document.getElementById('calBox'); if(!el)return;
+ const rows=logRead().filter(r=>r.visObservedM!=null&&r.visPredictedM!=null);
+ if(rows.length<3){
+  el.innerHTML='<div class="otext">Need at least three scored records. You have '+rows.length+'.</div>';
+  return;
+ }
+ // derive a northerly component so wind direction can be correlated at all
+ rows.forEach(r=>{r.northerly=r.windDir!=null?Math.cos(r.windDir*Math.PI/180):null});
+ const obs=rows.map(r=>r.visObservedM);
+ const skill=spearman(rows.map(r=>r.visPredictedM),obs);
+
+ const lines=DRIVERS.map(d=>{
+  const pairs=rows.filter(r=>r[d.k]!=null);
+  if(pairs.length<3)return null;
+  const rho=spearman(pairs.map(r=>r[d.k]),pairs.map(r=>r.visObservedM));
+  if(rho==null)return null;
+  return {...d,rho,n:pairs.length};
+ }).filter(Boolean).sort((a,b)=>Math.abs(b.rho)-Math.abs(a.rho));
+
+ const bar=v=>{
+  const w=Math.abs(v)*46;
+  const col=Math.abs(v)<0.3?'#8AA6B2':(v>0?'#5FD97A':'#FF4D6D');
+  return '<span class="cbar">'+(v<0?'<i style="margin-left:'+(46-w).toFixed(0)+'px;width:'+w.toFixed(0)+'px;background:'+col+'"></i>':'')
+   +'<b></b>'+(v>=0?'<i style="width:'+w.toFixed(0)+'px;background:'+col+'"></i>':'')+'</span>';
+ };
+ const verdictFor=d=>{
+  if(Math.abs(d.rho)<0.3)return '<span class="cw">no signal</span>';
+  const sign=d.rho<0?'-':'+';
+  if(d.want==='?')return '<span class="cg">separates</span>';
+  return sign===d.want?'<span class="cg">as expected</span>':'<span class="cb">wrong sign</span>';
+ };
+
+ el.innerHTML=
+  '<div class="otext"><b>Model skill</b>: rank correlation between predicted and observed is <b class="'
+   +(skill>0.6?'good':skill>0.3?'':'bad')+'">'+(skill!=null?skill.toFixed(2):'—')+'</b> across '+rows.length+' records.'
+   +'<br>Above 0.6 is genuinely useful. Below 0.3 the model is not tracking reality, and a low mean error '
+   +'just means it is predicting the average every time.</div>'
+  +'<div class="caltbl"><div class="chead"><span>driver</span><span>rho</span><span></span><span>verdict</span></div>'
+  +lines.map(d=>'<div class="crow" title="'+d.note+'"><span>'+d.label+'</span>'
+    +'<span>'+(d.rho>0?'+':'')+d.rho.toFixed(2)+'</span>'+bar(d.rho)+verdictFor(d)+'</div>').join('')
+  +'</div>'
+  +'<div class="otext">Negative means more of that driver goes with worse visibility. '
+  +'The strongest rows are the ones actually separating your good days from your bad ones. '
+  +'With fewer than about fifteen records treat this as a hint, not a finding.</div>'
+  +'<div class="caltbl" style="margin-top:14px"><div class="chead"><span>date</span><span>saw</span><span>pred</span><span>wind</span><span>rain</span><span>stir</span><span>SST</span></div>'
+  +rows.slice().sort((a,b)=>b.visObservedM-a.visObservedM).map(r=>
+    '<div class="crow2"><span>'+r.ts.slice(5,10)+'</span>'
+    +'<span><b>'+r.visObservedM+'</b></span><span>'+r.visPredictedM+'</span>'
+    +'<span>'+(r.windKmh!=null?Math.round(r.windKmh):'—')+' '+(r.windDir!=null?compass(r.windDir):'')+'</span>'
+    +'<span>'+(r.rain72mm!=null?r.rain72mm.toFixed(0):'—')+'</span>'
+    +'<span>'+(r.ubMs!=null?r.ubMs.toFixed(2):'—')+'</span>'
+    +'<span>'+(r.sstC!=null?r.sstC.toFixed(1):'—')+'</span></div>').join('')
+  +'</div><div class="otext">Sorted best to worst. Scan down each column for one that flips '
+  +'cleanly between the good rows and the bad ones.</div>';
 }
 
 /* ---- chips ---- */
