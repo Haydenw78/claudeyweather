@@ -3,6 +3,17 @@
 Fits and tests the visibility engine offline, so the web app only has to be
 rebuilt once a change has actually earned its place.
 
+## Data included
+
+| file | what it is |
+|---|---|
+| `observations-all-stations.json` | 680 reference readings across four IMOS stations, with every driver the engine computed. The main dataset. |
+| `observations-first-export.json` | Earlier export, North Stradbroke only. Kept because the lag analysis was run against it. |
+| `conditions.json` | 10 days of hourly wind behind each reading. Needed by `lags.py`, which cannot work from point-in-time records. |
+
+Scripts expect these under their original names, so `fit_util.py` looks for
+`data.json`. Rename or symlink as needed.
+
 ## Workflow
 
 1. In the app, backfill reference data and log dives.
