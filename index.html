@@ -2026,19 +2026,21 @@ const MARINE_LADDER=[
  ['wave_height','wave_period','wave_direction','swell_wave_height','swell_wave_period','swell_wave_direction'],
  ['wave_height','wave_period','wave_direction']
 ];
-let marineTier=null;                       // remember which rung worked
+/* Always start from the richest rung. Variable availability varies by year, so
+   remembering a lean tier from an early year would silently starve every later
+   one. The cost is at most one rejected request per year. */
 async function archMarine(spot,from,to){
- const start=marineTier==null?0:marineTier;
- for(let i=start;i<MARINE_LADDER.length;i++){
+ for(let i=0;i<MARINE_LADDER.length;i++){
   const r=await settle(getJSON(archMarineVars(MARINE_LADDER[i])(spot,from,to)));
   if(r.ok&&r.value[0]&&r.value[0].hourly){
-   marineTier=i;
-   return {hourly:r.value[0].hourly,tier:i,vars:MARINE_LADDER[i]};
+   const h=r.value[0].hourly;
+   // a tier that returns the key but fills it with nulls is not really serving it
+   const live=k=>h[k]&&h[k].some(v=>v!=null);
+   return {hourly:h,tier:i,vars:MARINE_LADDER[i],
+           hasSst:live('sea_surface_temperature'),hasTide:live('sea_level_height_msl')};
   }
  }
- // if a remembered rung stopped working, retry from the top once
- if(start>0){marineTier=null;return archMarine(spot,from,to)}
- return {hourly:null,tier:-1,vars:[]};
+ return {hourly:null,tier:-1,vars:[],hasSst:false,hasTide:false};
 }
 
 const shiftDays=(iso,n)=>{const d=new Date(iso+'T00:00');d.setDate(d.getDate()+n);return iso0(d)};
@@ -2374,13 +2376,35 @@ function renderCalibration(){
  const obs=rows.map(r=>r.visObservedM);
  const skill=spearman(rows.map(r=>r.visPredictedM),obs);
 
+ /* Almost everything at a coastal station has a season, so a raw correlation
+    can just be summer wearing a disguise. Subtracting each month's median from
+    both sides leaves only the within-month variation, which is the part that
+    tells you whether the driver does anything on a given week. */
+ const med=a=>{const b=a.slice().sort((x,y)=>x-y);return b.length%2?b[(b.length-1)/2]:(b[b.length/2-1]+b[b.length/2])/2};
+ const monthOf=r=>+r.ts.slice(5,7);
+ const deseason=(recs,key)=>{
+  const byM={};
+  recs.forEach(r=>{(byM[monthOf(r)]=byM[monthOf(r)]||[]).push(r[key])});
+  const m={}; Object.entries(byM).forEach(([k,v])=>m[k]=med(v));
+  return recs.map(r=>r[key]-m[monthOf(r)]);
+ };
  const lines=DRIVERS.map(d=>{
   const pairs=rows.filter(r=>r[d.k]!=null);
   if(pairs.length<3)return null;
   const rho=spearman(pairs.map(r=>r[d.k]),pairs.map(r=>r.visObservedM));
   if(rho==null)return null;
-  return {...d,rho,n:pairs.length};
+  let rhoDS=null;
+  if(pairs.length>=24){
+   const a=deseason(pairs,d.k), b=deseason(pairs,'visObservedM');
+   rhoDS=spearman(a,b);
+  }
+  return {...d,rho,rhoDS,n:pairs.length};
  }).filter(Boolean).sort((a,b)=>Math.abs(b.rho)-Math.abs(a.rho));
+
+ // how much of the observation is seasonal in the first place
+ const monthMed={};
+ rows.forEach(r=>{(monthMed[monthOf(r)]=monthMed[monthOf(r)]||[]).push(r.visObservedM)});
+ const seasonStrength=spearman(rows.map(r=>med(monthMed[monthOf(r)])),rows.map(r=>r.visObservedM));
 
  const bar=v=>{
   const w=Math.abs(v)*28;
@@ -2388,15 +2412,17 @@ function renderCalibration(){
   return '<span class="cbar">'+(v<0?'<i style="margin-left:'+(28-w).toFixed(0)+'px;width:'+w.toFixed(0)+'px;background:'+col+'"></i>':'')
    +'<b></b>'+(v>=0?'<i style="width:'+w.toFixed(0)+'px;background:'+col+'"></i>':'')+'</span>';
  };
- // what counts as a real correlation depends on sample size, not a fixed number
- const rCrit=1.96/Math.sqrt(Math.max(1,n-2+1.96*1.96));
+ // significance depends on how many records THAT driver had, not the dataset size
+ const rCritN=k=>1.96/Math.sqrt(Math.max(1,k-2+1.96*1.96));
  const verdictFor=d=>{
-  if(Math.abs(d.rho)<rCrit)return '<span class="cw">no signal</span>';
+  if(d.n<8)return '<span class="cb">only '+d.n+' records</span>';
+  if(Math.abs(d.rho)<rCritN(d.n))return '<span class="cw">no signal</span>';
   const sign=d.rho<0?'-':'+';
   const strength=Math.abs(d.rho)>=0.4?'strong':Math.abs(d.rho)>=0.25?'clear':'weak';
-  if(d.want==='?')return '<span class="cg">'+strength+' separator</span>';
-  return sign===d.want?'<span class="cg">'+strength+', as expected</span>'
-                      :'<span class="cb">'+strength+', wrong sign</span>';
+  const tail=d.n<n*0.5?' (only '+d.n+')':'';
+  if(d.want==='?')return '<span class="cg">'+strength+' separator'+tail+'</span>';
+  return sign===d.want?'<span class="cg">'+strength+', as expected'+tail+'</span>'
+                      :'<span class="cb">'+strength+', wrong sign'+tail+'</span>';
  };
 
  // rough two-sided significance for Spearman, good enough to flag noise
@@ -2410,14 +2436,26 @@ function renderCalibration(){
    +(skill!=null&&!sig(skill)?', <b class="bad">not statistically distinguishable from zero</b>':'')+'.'
    +'<br>Above 0.6 is genuinely useful. Below 0.3 the model is not tracking reality, and a low mean error '
    +'just means it is predicting the average every time.</div>'
-  +'<div class="caltbl"><div class="chead"><span>driver</span><span>rho</span><span></span><span>verdict</span></div>'
-  +lines.map(d=>'<div class="crow" title="'+d.note+'"><span>'+d.label+'</span>'
-    +'<span'+(sig(d.rho)?'':' style="opacity:.5"')+'>'+(d.rho>0?'+':'')+d.rho.toFixed(2)+'</span>'
-    +bar(d.rho)+verdictFor(d)+'</div>').join('')
+  +(seasonStrength!=null&&Math.abs(seasonStrength)>0.25
+    ? '<div class="otext"><b>Season alone</b> explains a rank correlation of <b>'+seasonStrength.toFixed(2)
+      +'</b> here. Any driver that also follows the calendar will inherit that, so the <b>within-month</b> '
+      +'column is the honest test: it asks whether the driver still separates good weeks from bad ones '
+      +'inside the same time of year.</div>':'')
+  +'<div class="caltbl"><div class="chead"><span>driver</span><span>rho</span><span>in-month</span><span>verdict</span></div>'
+  +lines.map(d=>{
+    const ds=d.rhoDS;
+    const kept=(ds!=null&&Math.abs(d.rho)>0.1)?Math.abs(ds)/Math.abs(d.rho):null;
+    const dsCol=ds==null?'var(--dim)':(kept!=null&&kept<0.4?'var(--magenta)':(Math.abs(ds)>=rCritN(d.n)?'var(--drying)':'var(--dim)'));
+    return '<div class="crow" title="'+d.note+'"><span>'+d.label+'</span>'
+    +'<span>'+(d.rho>0?'+':'')+d.rho.toFixed(2)+'</span>'
+    +'<span style="color:'+dsCol+'">'+(ds==null?'\u2014':(ds>0?'+':'')+ds.toFixed(2))+'</span>'
+    +verdictFor(d)+'</div>';
+   }).join('')
   +'</div>'
   +'<div class="otext">Negative means more of that driver goes with worse visibility. '
-  +'At n='+n+', any correlation beyond \u00b1'+rCrit.toFixed(2)+' is unlikely to be chance. '
-  +'Drivers returning no data at all are omitted entirely.</div>'
+  +'At n='+n+', anything beyond \u00b1'+rCritN(n).toFixed(2)+' is unlikely to be chance. '
+  +'<b>In-month</b> is the same correlation after each month\u2019s median is removed from both sides. '
+  +'Green there means the driver survives on its own. Red means most of its apparent power was seasonal.</div>'
   +(()=>{
     // only show columns that actually carry data
     const has=k=>rows.some(r=>r[k]!=null&&!(k==='ubMs'&&r[k]<0.001));
