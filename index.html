@@ -439,14 +439,14 @@ const REGIONS=[
   bom:'Capricornia Coastal Waters, St Lawrence to Burnett Heads',
   defaults:{windGo:19,swellGo:1.0,windNo:38,swellNo:2.0,period:11,periodH:1.2},
   spots:[
-   {id:'sykes', vMax:35, vMin:10,   name:'Sykes',        short:'SYK',  lat:-23.4331,  lon:152.0325,  type:'oceanic', dMin:10, dMax:30, note:'Eastern edge of the group. Most exposed to E and SE. Current runs hard on the springs.'},
-   {id:'lamont', vMax:35, vMin:10,  name:'Lamont',       short:'LAM',  lat:-23.6000,  lon:152.0489,  type:'oceanic', dMin:10, dMax:30, note:'South-east corner. Open to southerly swell wrapping up from the Tasman.'},
-   {id:'broom', vMax:35, vMin:10,   name:'Broomfield',   short:'BRO',  lat:-23.2650,  lon:151.9400,  type:'oceanic', dMin:8,  dMax:25, note:'North of Heron. Best lee in a SE. Position is an estimate — check your plotter.'},
-   {id:'nwi', vMax:30, vMin:8,     name:'North West Is',short:'NWI',  lat:-23.2983,  lon:151.7075,  type:'oceanic', dMin:8,  dMax:25, note:'Largest cay in the Marine Park. Western side, so it sits in the lee of a SE.'},
-   {id:'masthead', vMax:30, vMin:8,name:'Masthead Is',  short:'MHD',  lat:-23.5383,  lon:151.7333,  type:'oceanic', dMin:8,  dMax:25, note:'Elongate platform reef on the western side. Sheltered anchoring on the lee.'},
-   {id:'heron', vMax:32, vMin:9,   name:'Heron',        short:'HER',  lat:-23.4425,  lon:151.9139,  type:'oceanic', dMin:10, dMax:25, note:'Reference point. Compare against what the apps are showing you.'},
-   {id:'lmi', vMax:32, vMin:9,     name:'Lady Musgrave',short:'LMI',  lat:-23.9063,  lon:152.4006,  type:'oceanic', dMin:8,  dMax:25, note:'Fallback. Navigable lagoon, the forgiving overnight anchorage in the group.'},
-   {id:'bar1770', vMax:6, vMin:1, name:'1770 Bar',     short:'1770', lat:-24.16170, lon:151.87420, bar:true, inshore:true, type:'estuarine', dMin:5, dMax:8, shelter:0.6,
+   {id:'sykes', offshoreKm:80, vMax:35, vMin:10,   name:'Sykes',        short:'SYK',  lat:-23.4331,  lon:152.0325,  type:'oceanic', dMin:10, dMax:30, note:'Eastern edge of the group. Most exposed to E and SE. Current runs hard on the springs.'},
+   {id:'lamont', offshoreKm:78, vMax:35, vMin:10,  name:'Lamont',       short:'LAM',  lat:-23.6000,  lon:152.0489,  type:'oceanic', dMin:10, dMax:30, note:'South-east corner. Open to southerly swell wrapping up from the Tasman.'},
+   {id:'broom', offshoreKm:72, vMax:35, vMin:10,   name:'Broomfield',   short:'BRO',  lat:-23.2650,  lon:151.9400,  type:'oceanic', dMin:8,  dMax:25, note:'North of Heron. Best lee in a SE. Position is an estimate — check your plotter.'},
+   {id:'nwi', offshoreKm:62, vMax:30, vMin:8,     name:'North West Is',short:'NWI',  lat:-23.2983,  lon:151.7075,  type:'oceanic', dMin:8,  dMax:25, note:'Largest cay in the Marine Park. Western side, so it sits in the lee of a SE.'},
+   {id:'masthead', offshoreKm:65, vMax:30, vMin:8,name:'Masthead Is',  short:'MHD',  lat:-23.5383,  lon:151.7333,  type:'oceanic', dMin:8,  dMax:25, note:'Elongate platform reef on the western side. Sheltered anchoring on the lee.'},
+   {id:'heron', offshoreKm:70, vMax:32, vMin:9,   name:'Heron',        short:'HER',  lat:-23.4425,  lon:151.9139,  type:'oceanic', dMin:10, dMax:25, note:'Reference point. Compare against what the apps are showing you.'},
+   {id:'lmi', offshoreKm:95, vMax:32, vMin:9,     name:'Lady Musgrave',short:'LMI',  lat:-23.9063,  lon:152.4006,  type:'oceanic', dMin:8,  dMax:25, note:'Fallback. Navigable lagoon, the forgiving overnight anchorage in the group.'},
+   {id:'bar1770', offshoreKm:0.5, vMax:6, vMin:1, name:'1770 Bar',     short:'1770', lat:-24.16170, lon:151.87420, bar:true, inshore:true, type:'estuarine', dMin:5, dMax:8, shelter:0.6,
                   note:'Round Hill Creek entrance. Departure point, not a dive site. Watch it on the ebb with any south in the swell.'}
   ]},
  {id:'tweed', label:'Tweed & Gold Coast', minWindow:6,
@@ -454,17 +454,17 @@ const REGIONS=[
   bom:'Gold Coast Waters, Cape Moreton to Point Danger',
   defaults:{windGo:22,swellGo:1.2,windNo:42,swellNo:2.5,period:12,periodH:1.5},
   spots:[
-   {id:'seawaywall', vMax:12, vMin:1,name:'Seaway Wall',short:'SWW', lat:-27.93900, lon:153.42900, inshore:true, type:'estuarine', dMin:10, dMax:25, shelter:0.25,
+   {id:'seawaywall', offshoreKm:0.5, vMax:12, vMin:1,name:'Seaway Wall',short:'SWW', lat:-27.93900, lon:153.42900, inshore:true, type:'estuarine', dMin:10, dMax:25, shelter:0.25,
                     note:'Southern wall. Estuary-connected, so dive the last hour or two of the flood only. What you get in that window is capped by whatever is happening offshore.'},
-   {id:'seawaybar', vMax:6, vMin:1, name:'Seaway Bar', short:'SWB', lat:-27.93700, lon:153.43700, bar:true, inshore:true, type:'estuarine', dMin:5, dMax:10, shelter:0.7,
+   {id:'seawaybar', offshoreKm:0.3, vMax:6, vMin:1, name:'Seaway Bar', short:'SWB', lat:-27.93700, lon:153.43700, bar:true, inshore:true, type:'estuarine', dMin:5, dMax:10, shelter:0.7,
                     note:'The entrance. Walls are aligned 15 degrees north of east to cut swell entry, but it still stands up on an ebb.'},
-   {id:'ninemile', vMax:25, vMin:3,  name:'Nine Mile', short:'9ML', lat:-28.19460, lon:153.62893, type:'shelf', dMin:10, dMax:24,
+   {id:'ninemile', offshoreKm:5.8, vMax:25, vMin:3,  name:'Nine Mile', short:'9ML', lat:-28.19460, lon:153.62893, type:'shelf', dMin:10, dMax:24,
                     note:'Starts at 24 m on the north-west side and rises to 10 m over the reef. About 5.8 km off Fingal Head.'},
-   {id:'fidos', vMax:18, vMin:2,     name:'Fidos',     short:'FID', lat:-28.21000, lon:153.61000, type:'shelf', dMin:5, dMax:15,
+   {id:'fidos', offshoreKm:3.5, vMax:18, vMin:2,     name:'Fidos',     short:'FID', lat:-28.21000, lon:153.61000, type:'shelf', dMin:5, dMax:15,
                     note:'Shallower, 5 to 15 m. Position is an estimate — send me the mark and I will correct it.'},
-   {id:'kingscliff', vMax:15, vMin:2,name:'Kingscliff',short:'KGC', lat:-28.24828, lon:153.59798, inshore:true, type:'shelf', dMin:5, dMax:15,
+   {id:'kingscliff', offshoreKm:2.0, vMax:15, vMin:2,name:'Kingscliff',short:'KGC', lat:-28.24828, lon:153.59798, inshore:true, type:'shelf', dMin:5, dMax:15,
                     note:'Shallow, 5 to 15 m, around 2 km off Cudgen. Most exposed of the three to swell stirring.'},
-   {id:'tweedbar', vMax:6, vMin:1,  name:'Tweed Bar', short:'TWD', lat:-28.16908, lon:153.55643, bar:true, inshore:true, type:'estuarine', dMin:5, dMax:10, shelter:0.7,
+   {id:'tweedbar', offshoreKm:0.3, vMax:6, vMin:1,  name:'Tweed Bar', short:'TWD', lat:-28.16908, lon:153.55643, bar:true, inshore:true, type:'estuarine', dMin:5, dMax:10, shelter:0.7,
                     note:'The gate. Training walls help but it still stands up on an ebb against south swell.'}
   ]},
  {id:'moreton', label:'Moreton', minWindow:6,
@@ -472,9 +472,9 @@ const REGIONS=[
   bom:'Gold Coast Waters, Cape Moreton to Point Danger',
   defaults:{windGo:22,swellGo:1.2,windNo:42,swellNo:2.5,period:12,periodH:1.5},
   spots:[
-   {id:'flinders', vMax:30, vMin:5, name:'Flinders Reef',short:'FLR', lat:-26.9667, lon:153.4833, type:'shelf', dMin:8,  dMax:25, note:'North of Cape Moreton. Pick of the northern reefs, exposed once it gets up. Sits close to where the EAC runs hardest inshore.'},
-   {id:'smiths', vMax:32, vMin:6,   name:'Smiths Rock',  short:'SMR', lat:-26.9800, lon:153.5300, type:'shelf', dMin:18, dMax:35, note:'East of Flinders, deeper and more exposed. Depth protects it from swell stirring. Position is an estimate.'},
-   {id:'capemor', vMax:25, vMin:4,  name:'Cape Moreton', short:'CPM', lat:-27.0330, lon:153.4670, type:'shelf', dMin:10, dMax:25, note:'The corner. Useful reference for the top of the island.'}
+   {id:'flinders', offshoreKm:9, vMax:30, vMin:5, name:'Flinders Reef',short:'FLR', lat:-26.9667, lon:153.4833, type:'shelf', dMin:8,  dMax:25, note:'North of Cape Moreton. Pick of the northern reefs, exposed once it gets up. Sits close to where the EAC runs hardest inshore.'},
+   {id:'smiths', offshoreKm:13, vMax:32, vMin:6,   name:'Smiths Rock',  short:'SMR', lat:-26.9800, lon:153.5300, type:'shelf', dMin:18, dMax:35, note:'East of Flinders, deeper and more exposed. Depth protects it from swell stirring. Position is an estimate.'},
+   {id:'capemor', offshoreKm:4, vMax:25, vMin:4,  name:'Cape Moreton', short:'CPM', lat:-27.0330, lon:153.4670, type:'shelf', dMin:10, dMax:25, note:'The corner. Useful reference for the top of the island.'}
   ]}
 ];
 const MODELS=[
