@@ -2263,11 +2263,22 @@ function claimJob(name){
 }
 function releaseJob(){busyJob=null}
 let lastMarineErr=null;
+/* Fifteen requests per year, every year, was both slow and a good way to get
+   rate limited. Distinguish the two failure modes instead:
+     - an unsupported variable is worth stepping down the ladder for
+     - a date or location outside coverage is not, so stop and say so */
+const outOfRange=e=>/out of|not available|no data|range|bounds|400/i.test(e||'');
 async function archMarine(spot,from,to){
  for(const model of MARINE_MODELS){
   for(let i=0;i<MARINE_LADDER.length;i++){
    const r=await settle(getJSON(archMarineVars(MARINE_LADDER[i],model)(spot,from,to)));
-   if(!r.ok){lastMarineErr=(model||'auto')+' tier'+i+' '+r.error;continue}
+   if(!r.ok){
+    lastMarineErr=(model||'auto')+' tier'+i+': '+r.error;
+    // a leaner variable list will not fix a coverage problem
+    if(i===0&&outOfRange(r.error)&&model==='')
+     return {hourly:null,tier:-1,model:null,vars:[],hasSst:false,hasTide:false,err:lastMarineErr,fatal:true};
+    continue;
+   }
    const h=r.value[0]&&r.value[0].hourly;
    if(!h)continue;
    const live=k=>h[k]&&h[k].some(v=>v!=null);
@@ -2860,20 +2871,36 @@ async function backfillStationInner(st){
    vMax:Math.max(...st.ev.map(e=>e.secchi)), vMin:Math.min(...st.ev.map(e=>e.secchi))};
  const years=[...new Set(st.ev.map(e=>e.when.slice(0,4)))].sort();
  const t=thresholds(), out=[];
- let done=0, noMarine=0, marineNote=-1;
+ let done=0, noMarine=0, marineNote=-1, marineErr=null, waveFrom=null;
+
+ /* Binary search for the first year with wave data instead of asking for all of
+    them. Saves dozens of requests and tells you plainly where coverage begins. */
+ box.innerHTML='<div class="skel" style="height:30px"></div><div class="otext">'
+  +st.name+': finding where the wave archive starts…</div>';
+ {
+  let lo=0, hi=years.length-1, found=null;
+  while(lo<=hi){
+   const mid=(lo+hi)>>1, y=years[mid];
+   const probe=await archMarine(spot,y+'-06-01',y+'-06-05');
+   if(probe.hourly){found=mid; hi=mid-1}
+   else {marineErr=probe.err; lo=mid+1}
+  }
+  waveFrom=found!=null?years[found]:null;
+ }
 
  for(const y of years){
   box.innerHTML='<div class="skel" style="height:30px"></div><div class="otext">'
    +st.name+': fetching '+y+' ('+(done)+' of '+st.ev.length+' events done)…</div>';
   const from=(+y-1)+'-12-20', to=y+'-12-31';
+  const wantMarine=waveFrom!=null&&y>=waveFrom;
   const [w,m]=await Promise.all([
    settle(getJSON(archWindURL(spot,from,to))),
-   archMarine(spot,from,to)
+   wantMarine?archMarine(spot,from,to):Promise.resolve({hourly:null,tier:-1})
   ]);
   if(!w.ok)continue;
   const wh=w.value[0].hourly, mh=m.hourly;
   if(!mh)noMarine++;
-  marineNote=m.tier;
+  if(m.tier>=0)marineNote=m.tier;
   const blocks=buildBlocks(wh,mh,null,spot,t,1);
   computeVis(blocks,spot,mh?tideTurnsFrom(mh):{turns:[]},1);
   const idx={}; blocks.forEach(b=>idx[b.time]=b);
@@ -2914,9 +2941,14 @@ async function backfillStationInner(st){
  if(!withMarine)miss.push('waves');
  if(!withSst)miss.push('sea temperature');
  if(!withTide)miss.push('tide');
+ const cov=waveFrom
+  ? 'Wave archive at this location starts in <b>'+waveFrom+'</b>, so only readings from then on can carry them.'
+  : 'The wave archive returned nothing at this location in any year'
+    +(marineErr?'. Last response: <i>'+marineErr+'</i>':'.');
  box.innerHTML='<div class="otext '+(miss.length?'bad':'good')+'">Backfilled <b>'+out.length+'</b> events for '+st.name+'.'
   +'<br>waves '+withMarine+'/'+out.length+' \u00b7 SST '+withSst+'/'+out.length
   +' \u00b7 tide '+withTide+'/'+out.length+' \u00b7 bed stirring above zero on '+withStir+' events'
+  +'<br>'+cov
   +(marineNote>0?'<br>The archive only served a reduced set of marine variables (tier '+marineNote+').':'')
   +(miss.length?'<br><b>Missing: '+miss.join(', ')+'.</b> Those drivers cannot be tested from this run.':'')
   +'<br>Station depth used: '+depth+' m.</div>';
