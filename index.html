@@ -615,7 +615,13 @@ const ensURL=s=>'https://ensemble-api.open-meteo.com/v1/ensemble?'+new URLSearch
  timezone:TZ,forecast_days:DAYS,models:'ecmwf_ifs025'});
 
 async function getJSON(u){
+ if(rateLimited)throw new RateLimit('rate limited');
  const r=await fetch(u,{cache:'no-store'});
+ if(r.status===429){
+  // every further request in this hour will fail too, so stop the whole run
+  rateLimited=true;
+  throw new RateLimit('Open-Meteo hourly request limit reached');
+ }
  if(!r.ok){
   // Open-Meteo puts the useful part in the body, not the status line
   let why='';
@@ -2099,7 +2105,14 @@ function recordSpot(r){
    With the raw series any lag can be tested offline with no further round trip. */
 async function exportConditions(){
  if(!claimJob('A conditions export'))return;
- try{ await exportConditionsInner() } finally { releaseJob() }
+ try{ await exportConditionsInner() }
+ catch(e){
+  const n=document.getElementById('exportNote');
+  if(n)n.innerHTML='<div class="otext bad">'
+   +(e instanceof RateLimit?'Stopped: hourly request limit reached. Wait for the hour to turn, reload, and try again.'
+                           :'Export failed: '+e.message)+'</div>';
+ }
+ finally{ releaseJob() }
 }
 async function exportConditionsInner(){
  const ref=refRead(), note=document.getElementById('exportNote');
@@ -2262,6 +2275,8 @@ function claimJob(name){
  busyJob=name; return true;
 }
 function releaseJob(){busyJob=null}
+let rateLimited=false;                 // set on the first 429, cleared on reload
+class RateLimit extends Error{}
 let lastMarineErr=null;
 /* Fifteen requests per year, every year, was both slow and a good way to get
    rate limited. Distinguish the two failure modes instead:
@@ -2860,7 +2875,20 @@ function onRefFile(file){
    windows continuous. Far fewer requests than one call per sample. */
 async function backfillStation(st){
  if(!claimJob('A backfill'))return;
- try{ await backfillStationInner(st) } finally { releaseJob() }
+ if(rateLimited){
+  document.getElementById('refOut').innerHTML='<div class="otext bad">Still rate limited. '
+   +'Open-Meteo resets on the hour. Reload the page once it has, then try again.</div>';
+  releaseJob(); return;
+ }
+ try{ await backfillStationInner(st) }
+ catch(e){
+  document.getElementById('refOut').innerHTML='<div class="otext bad">'
+   +(e instanceof RateLimit
+     ? 'Stopped: Open-Meteo hourly request limit reached. Nothing was saved for this station.<br>'
+       +'The limit resets on the hour. Reload the page after that and run one station only.'
+     : 'Backfill failed: '+e.message)+'</div>';
+ }
+ finally{ releaseJob() }
 }
 async function backfillStationInner(st){
  const box=document.getElementById('refOut');
@@ -2875,8 +2903,10 @@ async function backfillStationInner(st){
 
  /* Binary search for the first year with wave data instead of asking for all of
     them. Saves dozens of requests and tells you plainly where coverage begins. */
+ const estReq=years.length*2+8;
  box.innerHTML='<div class="skel" style="height:30px"></div><div class="otext">'
-  +st.name+': finding where the wave archive starts…</div>';
+  +st.name+': finding where the wave archive starts. About '+estReq+' requests for this station. '
+  +'Open-Meteo allows a few hundred an hour, so run one station at a time.</div>';
  {
   let lo=0, hi=years.length-1, found=null;
   while(lo<=hi){
