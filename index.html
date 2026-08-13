@@ -174,12 +174,15 @@ details[open] summary::after{content:' −'}
   padding:10px;border-radius:2px;resize:vertical}
 #bulkText:focus-visible{outline:2px solid var(--shoal);outline-offset:1px}
 .caltbl{font-family:'IBM Plex Mono',monospace;font-size:12px;margin-top:10px}
-.chead,.crow{display:grid;grid-template-columns:104px 46px 100px 1fr;gap:8px;align-items:center;
+.chead,.crow{display:grid;grid-template-columns:96px 44px 62px 1fr;gap:7px;align-items:center;
   padding:5px 0;border-top:1px dotted var(--ink-3)}
+@media (max-width:430px){.chead,.crow{grid-template-columns:88px 40px 44px 1fr;gap:5px;font-size:11px}}
 .chead{color:var(--dim);border-top:none;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase}
-.crow2{display:grid;grid-template-columns:46px 40px 44px 66px 40px 42px 1fr;gap:6px;
-  padding:5px 0;border-top:1px dotted var(--ink-3)}
-.cbar{display:inline-flex;align-items:center;width:100px}
+.crow2{display:grid;gap:5px;padding:5px 0;border-top:1px dotted var(--ink-3);
+  font-size:11.5px;white-space:nowrap}
+.crow2.gap{color:var(--dim);grid-template-columns:1fr!important;text-align:center;padding:2px 0}
+.chead{white-space:nowrap}
+.cbar{display:inline-flex;align-items:center;width:62px}
 .cbar i{display:block;height:7px;border-radius:1px}
 .cbar b{display:block;width:1px;height:11px;background:var(--hairline)}
 .cg{color:var(--drying)} .cb{color:var(--magenta)} .cw{color:var(--dim)}
@@ -2008,9 +2011,35 @@ const archWindURL=(sp,a,b)=>'https://archive-api.open-meteo.com/v1/archive?'+new
  latitude:sp.lat,longitude:sp.lon,start_date:a,end_date:b,
  hourly:'wind_speed_10m,wind_direction_10m,wind_gusts_10m,pressure_msl,precipitation,temperature_2m',
  wind_speed_unit:'kmh',timezone:TZ});
-const archMarineURL=(sp,a,b)=>'https://marine-api.open-meteo.com/v1/marine?'+new URLSearchParams({
- latitude:sp.lat,longitude:sp.lon,start_date:a,end_date:b,
- hourly:MARINE_BASE.concat(MARINE_TRAINS).join(','),timezone:TZ});
+const archMarineVars=v=>(sp,a,b)=>'https://marine-api.open-meteo.com/v1/marine?'+new URLSearchParams({
+ latitude:sp.lat,longitude:sp.lon,start_date:a,end_date:b,hourly:v.join(','),timezone:TZ});
+const archMarineURL=archMarineVars(MARINE_BASE.concat(MARINE_TRAINS));
+/* Progressively simpler requests. Older archives carry fewer variables, and a
+   single unsupported one rejects the entire call, so try the richest first and
+   fall back rather than losing waves, tide and SST altogether. */
+const MARINE_LADDER=[
+ MARINE_BASE.concat(MARINE_TRAINS),
+ ['wave_height','wave_period','wave_direction','swell_wave_height','swell_wave_period','swell_wave_direction',
+  'wind_wave_height','wind_wave_period','wind_wave_direction','sea_level_height_msl','sea_surface_temperature'],
+ ['wave_height','wave_period','wave_direction','swell_wave_height','swell_wave_period','swell_wave_direction',
+  'wind_wave_height','wind_wave_period','wind_wave_direction','sea_level_height_msl'],
+ ['wave_height','wave_period','wave_direction','swell_wave_height','swell_wave_period','swell_wave_direction'],
+ ['wave_height','wave_period','wave_direction']
+];
+let marineTier=null;                       // remember which rung worked
+async function archMarine(spot,from,to){
+ const start=marineTier==null?0:marineTier;
+ for(let i=start;i<MARINE_LADDER.length;i++){
+  const r=await settle(getJSON(archMarineVars(MARINE_LADDER[i])(spot,from,to)));
+  if(r.ok&&r.value[0]&&r.value[0].hourly){
+   marineTier=i;
+   return {hourly:r.value[0].hourly,tier:i,vars:MARINE_LADDER[i]};
+  }
+ }
+ // if a remembered rung stopped working, retry from the top once
+ if(start>0){marineTier=null;return archMarine(spot,from,to)}
+ return {hourly:null,tier:-1,vars:[]};
+}
 
 const shiftDays=(iso,n)=>{const d=new Date(iso+'T00:00');d.setDate(d.getDate()+n);return iso0(d)};
 const iso0=d=>d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());
@@ -2028,10 +2057,10 @@ async function runHindcast(){
  out.innerHTML='<div class="skel" style="height:40px"></div>';
  const [w,m]=await Promise.all([
   settle(getJSON(archWindURL(spot,from,to))),
-  settle(getJSON(archMarineURL(spot,from,to)))
+  archMarine(spot,from,to)
  ]);
  if(!w.ok){out.innerHTML='<div class="otext bad">Archive unavailable: '+w.error+'</div>';return}
- const wh=w.value[0].hourly, mh=m.ok?m.value[0].hourly:null;
+ const wh=w.value[0].hourly, mh=m.hourly;
  if(!mh)out.innerHTML='<div class="otext">No wave archive for this date, visibility will be wind-only and unreliable.</div>';
  const t=thresholds();
  const blocks=buildBlocks(wh,mh,null,spot,t,1);   // hourly: the tide gate is sharp
@@ -2171,10 +2200,9 @@ async function archWindow(spot,date){
  if(archCache[key])return archCache[key];
  const [w,m]=await Promise.all([
   settle(getJSON(archWindURL(spot,from,to))),
-  settle(getJSON(archMarineURL(spot,from,to)))
+  archMarine(spot,from,to)
  ]);
- const val={w:w.ok?w.value[0].hourly:null, m:m.ok?m.value[0].hourly:null,
-            err:w.ok?null:w.error};
+ const val={w:w.ok?w.value[0].hourly:null, m:m.hourly, err:w.ok?null:w.error};
  archCache[key]=val;
  return val;
 }
@@ -2340,6 +2368,7 @@ function renderCalibration(){
   el.innerHTML='<div class="otext">Need at least three scored records in this dataset. You have '+rows.length+'.</div>';
   return;
  }
+ const n=rows.length;
  // derive a northerly component so wind direction can be correlated at all
  rows.forEach(r=>{r.northerly=r.windDir!=null?Math.cos(r.windDir*Math.PI/180):null});
  const obs=rows.map(r=>r.visObservedM);
@@ -2354,19 +2383,22 @@ function renderCalibration(){
  }).filter(Boolean).sort((a,b)=>Math.abs(b.rho)-Math.abs(a.rho));
 
  const bar=v=>{
-  const w=Math.abs(v)*46;
+  const w=Math.abs(v)*28;
   const col=Math.abs(v)<0.3?'#8AA6B2':(v>0?'#5FD97A':'#FF4D6D');
-  return '<span class="cbar">'+(v<0?'<i style="margin-left:'+(46-w).toFixed(0)+'px;width:'+w.toFixed(0)+'px;background:'+col+'"></i>':'')
+  return '<span class="cbar">'+(v<0?'<i style="margin-left:'+(28-w).toFixed(0)+'px;width:'+w.toFixed(0)+'px;background:'+col+'"></i>':'')
    +'<b></b>'+(v>=0?'<i style="width:'+w.toFixed(0)+'px;background:'+col+'"></i>':'')+'</span>';
  };
+ // what counts as a real correlation depends on sample size, not a fixed number
+ const rCrit=1.96/Math.sqrt(Math.max(1,n-2+1.96*1.96));
  const verdictFor=d=>{
-  if(Math.abs(d.rho)<0.3)return '<span class="cw">no signal</span>';
+  if(Math.abs(d.rho)<rCrit)return '<span class="cw">no signal</span>';
   const sign=d.rho<0?'-':'+';
-  if(d.want==='?')return '<span class="cg">separates</span>';
-  return sign===d.want?'<span class="cg">as expected</span>':'<span class="cb">wrong sign</span>';
+  const strength=Math.abs(d.rho)>=0.4?'strong':Math.abs(d.rho)>=0.25?'clear':'weak';
+  if(d.want==='?')return '<span class="cg">'+strength+' separator</span>';
+  return sign===d.want?'<span class="cg">'+strength+', as expected</span>'
+                      :'<span class="cb">'+strength+', wrong sign</span>';
  };
 
- const n=rows.length;
  // rough two-sided significance for Spearman, good enough to flag noise
  const sig=r=>{const tt=Math.abs(r)*Math.sqrt((n-2)/Math.max(1e-9,1-r*r));return tt>2.0};
  el.innerHTML=
@@ -2381,20 +2413,39 @@ function renderCalibration(){
   +'<div class="caltbl"><div class="chead"><span>driver</span><span>rho</span><span></span><span>verdict</span></div>'
   +lines.map(d=>'<div class="crow" title="'+d.note+'"><span>'+d.label+'</span>'
     +'<span'+(sig(d.rho)?'':' style="opacity:.5"')+'>'+(d.rho>0?'+':'')+d.rho.toFixed(2)+'</span>'
-    +bar(d.rho)+(sig(d.rho)?verdictFor(d):'<span class="cw">noise</span>')+'</div>').join('')
+    +bar(d.rho)+verdictFor(d)+'</div>').join('')
   +'</div>'
   +'<div class="otext">Negative means more of that driver goes with worse visibility. '
-  +'Rows marked noise are not distinguishable from chance at this sample size.</div>'
-  +'<div class="caltbl" style="margin-top:14px"><div class="chead"><span>date</span><span>saw</span><span>pred</span><span>wind</span><span>rain</span><span>stir</span><span>SST</span></div>'
-  +rows.slice().sort((a,b)=>b.visObservedM-a.visObservedM).slice(0,14).map(r=>
-    '<div class="crow2"><span>'+r.ts.slice(5,10)+'</span>'
-    +'<span><b>'+r.visObservedM+'</b></span><span>'+r.visPredictedM+'</span>'
-    +'<span>'+(r.windKmh!=null?Math.round(r.windKmh):'—')+' '+(r.windDir!=null?compass(r.windDir):'')+'</span>'
-    +'<span>'+(r.rain72mm!=null?r.rain72mm.toFixed(0):'—')+'</span>'
-    +'<span>'+(r.ubMs!=null?r.ubMs.toFixed(2):'—')+'</span>'
-    +'<span>'+(r.sstC!=null?r.sstC.toFixed(1):'—')+'</span></div>').join('')
-  +'</div><div class="otext">Sorted best to worst. Scan down each column for one that flips '
-  +'cleanly between the good rows and the bad ones.</div>';
+  +'At n='+n+', any correlation beyond \u00b1'+rCrit.toFixed(2)+' is unlikely to be chance. '
+  +'Drivers returning no data at all are omitted entirely.</div>'
+  +(()=>{
+    // only show columns that actually carry data
+    const has=k=>rows.some(r=>r[k]!=null&&!(k==='ubMs'&&r[k]<0.001));
+    const cols=[{k:'ts',h:'date'},{k:'visObservedM',h:'saw'},{k:'visPredictedM',h:'pred'},{k:'windKmh',h:'wind'}]
+     .concat(has('rain72mm')?[{k:'rain72mm',h:'rain'}]:[])
+     .concat(has('ubMs')?[{k:'ubMs',h:'stir'}]:[])
+     .concat(has('sstC')?[{k:'sstC',h:'sst'}]:[]);
+    const grid='grid-template-columns:46px 38px 40px 68px'+' 40px'.repeat(cols.length-4)+';';
+    const cell=(r,c)=>{
+     if(c.k==='ts')return r.ts.slice(5,10);
+     if(c.k==='visObservedM')return '<b>'+r.visObservedM+'</b>';
+     if(c.k==='visPredictedM')return r.visPredictedM!=null?r.visPredictedM.toFixed(0):'\u2014';
+     if(c.k==='windKmh')return (r.windKmh!=null?Math.round(r.windKmh):'\u2014')+' '+(r.windDir!=null?compass(r.windDir):'');
+     if(c.k==='ubMs')return r.ubMs!=null?r.ubMs.toFixed(2):'\u2014';
+     if(c.k==='sstC')return r.sstC!=null?r.sstC.toFixed(1):'\u2014';
+     return r[c.k]!=null?(+r[c.k]).toFixed(0):'\u2014';
+    };
+    const sorted=rows.slice().sort((a,b)=>b.visObservedM-a.visObservedM);
+    // best seven and worst seven: the middle teaches nothing
+    const show=sorted.length>16?sorted.slice(0,7).concat([null]).concat(sorted.slice(-7)):sorted.slice(0,16);
+    return '<div class="caltbl" style="margin-top:14px"><div class="chead" style="'+grid+'">'
+     +cols.map(c=>'<span>'+c.h+'</span>').join('')+'</div>'
+     +show.map(r=>r===null
+       ? '<div class="crow2 gap" style="'+grid+'"><span>\u22ee</span></div>'
+       : '<div class="crow2" style="'+grid+'">'+cols.map(c=>'<span>'+cell(r,c)+'</span>').join('')+'</div>').join('')
+     +'</div><div class="otext">Best seven at the top, worst seven at the bottom. '
+     +'Scan each column for one that flips cleanly between the two groups.</div>';
+   })();
 }
 
 
@@ -2488,7 +2539,7 @@ async function backfillStation(st){
    vMax:Math.max(...st.ev.map(e=>e.secchi)), vMin:Math.min(...st.ev.map(e=>e.secchi))};
  const years=[...new Set(st.ev.map(e=>e.when.slice(0,4)))].sort();
  const t=thresholds(), out=[];
- let done=0, noMarine=0;
+ let done=0, noMarine=0, marineNote=-1;
 
  for(const y of years){
   box.innerHTML='<div class="skel" style="height:30px"></div><div class="otext">'
@@ -2496,11 +2547,12 @@ async function backfillStation(st){
   const from=(+y-1)+'-12-20', to=y+'-12-31';
   const [w,m]=await Promise.all([
    settle(getJSON(archWindURL(spot,from,to))),
-   settle(getJSON(archMarineURL(spot,from,to)))
+   archMarine(spot,from,to)
   ]);
   if(!w.ok)continue;
-  const wh=w.value[0].hourly, mh=m.ok?m.value[0].hourly:null;
+  const wh=w.value[0].hourly, mh=m.hourly;
   if(!mh)noMarine++;
+  marineNote=m.tier;
   const blocks=buildBlocks(wh,mh,null,spot,t,1);
   computeVis(blocks,spot,mh?tideTurnsFrom(mh):{turns:[]},1);
   const idx={}; blocks.forEach(b=>idx[b.time]=b);
@@ -2533,9 +2585,19 @@ async function backfillStation(st){
  const keep=refRead().filter(r=>r.station!==st.name).concat(out);
  refWrite(keep);
  const withMarine=out.filter(r=>r.seaM!=null).length;
- box.innerHTML='<div class="otext good">Backfilled <b>'+out.length+'</b> events for '+st.name+'.'
-  +'<br>'+withMarine+' have wave data'+(withMarine<out.length?', '+(out.length-withMarine)+' are wind-only':'')+'.'
-  +'<br>Station depth used: '+depth+' m. Change it above and backfill again if that is wrong.</div>';
+ const withSst=out.filter(r=>r.sstC!=null).length;
+ const withTide=out.filter(r=>r.tideM!=null).length;
+ const withStir=out.filter(r=>r.ubMs!=null&&r.ubMs>0.001).length;
+ const miss=[];
+ if(!withMarine)miss.push('waves');
+ if(!withSst)miss.push('sea temperature');
+ if(!withTide)miss.push('tide');
+ box.innerHTML='<div class="otext '+(miss.length?'bad':'good')+'">Backfilled <b>'+out.length+'</b> events for '+st.name+'.'
+  +'<br>waves '+withMarine+'/'+out.length+' \u00b7 SST '+withSst+'/'+out.length
+  +' \u00b7 tide '+withTide+'/'+out.length+' \u00b7 bed stirring above zero on '+withStir+' events'
+  +(marineNote>0?'<br>The archive only served a reduced set of marine variables (tier '+marineNote+').':'')
+  +(miss.length?'<br><b>Missing: '+miss.join(', ')+'.</b> Those drivers cannot be tested from this run.':'')
+  +'<br>Station depth used: '+depth+' m.</div>';
  buildCalSelect(); renderCalibration();
 }
 
