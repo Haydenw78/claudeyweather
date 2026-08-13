@@ -357,7 +357,23 @@ details[open] summary::after{content:' −'}
         <div id="bulkOut"></div>
       </div>
       <div id="logList"></div>
+      <div class="panel-label" style="margin-top:20px">Reference data</div>
+      <div class="otext">Load an AODN biogeochemical export and it will reconstruct conditions for every
+        Secchi reading in it. Deep stations isolate the water-mass terms because nothing stirs the bed
+        at depth. Shallower ones test resuspension.</div>
+      <div class="logform">
+        <label class="btn" for="refFile" style="cursor:pointer">Load AODN CSV</label>
+        <input id="refFile" type="file" accept=".csv,text/csv" style="display:none">
+        <label for="refDepth">Station depth (m)</label>
+        <input id="refDepth" type="number" inputmode="decimal" value="30">
+      </div>
+      <div id="refOut"></div>
+
       <div class="panel-label" style="margin-top:20px">What is actually driving it</div>
+      <div class="logform" style="margin-top:0">
+        <label for="calSet">Dataset</label>
+        <select id="calSet"></select>
+      </div>
       <div id="calBox"></div>
       <div class="otext" id="logHealth" style="margin-top:18px"></div>
       <div class="logform" style="margin-top:10px">
@@ -1884,7 +1900,7 @@ function renderHealth(){
 }
 function renderLog(){
  const rows=logRead(), el=document.getElementById('logList'); if(!el)return;
- renderHealth(); renderCalibration();
+ renderHealth(); buildCalSelect(); renderCalibration();
  if(!rows.length){el.innerHTML='<div class="otext">No entries yet.</div>';renderLogCtx();return}
  const scored=rows.filter(r=>r.visObservedM!=null&&r.visPredicted!=null);
  let hdr='';
@@ -2301,11 +2317,27 @@ function spearman(x,y){
  for(let i=0;i<n;i++){const a=rx[i]-mx,b=ry[i]-my;num+=a*b;dx+=a*a;dy+=b*b}
  return (dx&&dy)?num/Math.sqrt(dx*dy):null;
 }
+function calDatasets(){
+ const sets=[{id:'dives',label:'My dive log',rows:logRead().filter(r=>r.visObservedM!=null&&r.visPredictedM!=null)}];
+ const ref=refRead(), byStation={};
+ ref.forEach(r=>{(byStation[r.station]=byStation[r.station]||[]).push(r)});
+ Object.entries(byStation).forEach(([n,rows])=>sets.push({id:'ref_'+n,label:n+' (Secchi)',rows}));
+ return sets;
+}
+function buildCalSelect(){
+ const el=document.getElementById('calSet'); if(!el)return;
+ const sets=calDatasets(), cur=el.value;
+ el.innerHTML=sets.map(x=>'<option value="'+x.id+'">'+x.label+' \u00b7 '+x.rows.length+'</option>').join('');
+ if(sets.some(x=>x.id===cur))el.value=cur;
+}
 function renderCalibration(){
  const el=document.getElementById('calBox'); if(!el)return;
- const rows=logRead().filter(r=>r.visObservedM!=null&&r.visPredictedM!=null);
+ const sets=calDatasets(), sel=document.getElementById('calSet');
+ const chosen=sets.find(x=>x.id===(sel&&sel.value))||sets[0];
+ const rows=chosen.rows.slice();
+ const isRef=chosen.id!=='dives';
  if(rows.length<3){
-  el.innerHTML='<div class="otext">Need at least three scored records. You have '+rows.length+'.</div>';
+  el.innerHTML='<div class="otext">Need at least three scored records in this dataset. You have '+rows.length+'.</div>';
   return;
  }
  // derive a northerly component so wind direction can be correlated at all
@@ -2334,20 +2366,27 @@ function renderCalibration(){
   return sign===d.want?'<span class="cg">as expected</span>':'<span class="cb">wrong sign</span>';
  };
 
+ const n=rows.length;
+ // rough two-sided significance for Spearman, good enough to flag noise
+ const sig=r=>{const tt=Math.abs(r)*Math.sqrt((n-2)/Math.max(1e-9,1-r*r));return tt>2.0};
  el.innerHTML=
-  '<div class="otext"><b>Model skill</b>: rank correlation between predicted and observed is <b class="'
-   +(skill>0.6?'good':skill>0.3?'':'bad')+'">'+(skill!=null?skill.toFixed(2):'—')+'</b> across '+rows.length+' records.'
+  (isRef?'<div class="otext">These are <b>Secchi depths</b>, a vertical measure, not horizontal diver '
+   +'visibility. Rank correlation is unchanged by that difference, so the driver rankings below still '
+   +'apply to what you would see underwater. Absolute metres do not transfer.</div>':'')
+  +'<div class="otext"><b>Model skill</b>: rank correlation between predicted and observed is <b class="'
+   +(skill>0.6?'good':skill>0.3?'':'bad')+'">'+(skill!=null?skill.toFixed(2):'—')+'</b> across '+n+' records'
+   +(skill!=null&&!sig(skill)?', <b class="bad">not statistically distinguishable from zero</b>':'')+'.'
    +'<br>Above 0.6 is genuinely useful. Below 0.3 the model is not tracking reality, and a low mean error '
    +'just means it is predicting the average every time.</div>'
   +'<div class="caltbl"><div class="chead"><span>driver</span><span>rho</span><span></span><span>verdict</span></div>'
   +lines.map(d=>'<div class="crow" title="'+d.note+'"><span>'+d.label+'</span>'
-    +'<span>'+(d.rho>0?'+':'')+d.rho.toFixed(2)+'</span>'+bar(d.rho)+verdictFor(d)+'</div>').join('')
+    +'<span'+(sig(d.rho)?'':' style="opacity:.5"')+'>'+(d.rho>0?'+':'')+d.rho.toFixed(2)+'</span>'
+    +bar(d.rho)+(sig(d.rho)?verdictFor(d):'<span class="cw">noise</span>')+'</div>').join('')
   +'</div>'
   +'<div class="otext">Negative means more of that driver goes with worse visibility. '
-  +'The strongest rows are the ones actually separating your good days from your bad ones. '
-  +'With fewer than about fifteen records treat this as a hint, not a finding.</div>'
+  +'Rows marked noise are not distinguishable from chance at this sample size.</div>'
   +'<div class="caltbl" style="margin-top:14px"><div class="chead"><span>date</span><span>saw</span><span>pred</span><span>wind</span><span>rain</span><span>stir</span><span>SST</span></div>'
-  +rows.slice().sort((a,b)=>b.visObservedM-a.visObservedM).map(r=>
+  +rows.slice().sort((a,b)=>b.visObservedM-a.visObservedM).slice(0,14).map(r=>
     '<div class="crow2"><span>'+r.ts.slice(5,10)+'</span>'
     +'<span><b>'+r.visObservedM+'</b></span><span>'+r.visPredictedM+'</span>'
     +'<span>'+(r.windKmh!=null?Math.round(r.windKmh):'—')+' '+(r.windDir!=null?compass(r.windDir):'')+'</span>'
@@ -2356,6 +2395,148 @@ function renderCalibration(){
     +'<span>'+(r.sstC!=null?r.sstC.toFixed(1):'—')+'</span></div>').join('')
   +'</div><div class="otext">Sorted best to worst. Scan down each column for one that flips '
   +'cleanly between the good rows and the bad ones.</div>';
+}
+
+
+/* ==================== reference dataset import ==========================
+   IMOS National Reference Station Secchi depth. Secchi is a vertical measure
+   and not the same as horizontal diver visibility, but the two are related by
+   some monotonic function. Spearman rank correlation is invariant under any
+   monotonic transform, so the driver rankings computed against Secchi hold for
+   horizontal visibility too, without needing to know the conversion.
+
+   What Secchi cannot give is absolute scale. Site ceilings still come from
+   logged dives.
+========================================================================= */
+function refRead(){try{return JSON.parse(store.get('refdata')||'[]')}catch(e){return []}}
+function refWrite(a){try{store.set('refdata',JSON.stringify(a))}catch(e){alert('Storage full. Export and clear some records.')}}
+
+function parseCsv(text){
+ const lines=text.split(/\r?\n/).filter(l=>l.trim());
+ if(!lines.length)return [];
+ const split=l=>{
+  const out=[];let cur='',q=false;
+  for(let i=0;i<l.length;i++){
+   const c=l[i];
+   if(c==='"'){q=!q;continue}
+   if(c===','&&!q){out.push(cur);cur='';continue}
+   cur+=c;
+  }
+  out.push(cur);return out;
+ };
+ const head=split(lines[0]).map(h=>h.trim().replace(/^\uFEFF/,''));
+ return lines.slice(1).map(l=>{
+  const c=split(l), o={};
+  head.forEach((h,i)=>o[h]=(c[i]||'').trim());
+  return o;
+ });
+}
+
+let refParsed=null;
+function onRefFile(file){
+ const box=document.getElementById('refOut');
+ box.innerHTML='<div class="skel" style="height:30px"></div>';
+ const fr=new FileReader();
+ fr.onload=()=>{
+  const rows=parseCsv(fr.result);
+  if(!rows.length||!('SecchiDepth_m' in rows[0])){
+   box.innerHTML='<div class="otext bad">That does not look like an AODN biogeochemical export. '
+    +'Expected a SecchiDepth_m column.</div>';
+   return;
+  }
+  // one Secchi reading per sampling event, not per bottle depth
+  const byStation={};
+  rows.forEach(r=>{
+   const v=parseFloat(r.SecchiDepth_m);
+   if(isNaN(v)||v<=0||v>45)return;                 // 45 m+ is not a real coastal Secchi
+   const st=(r.StationName||'').trim(); if(!st)return;
+   const when=(r.SampleTime_Local||'').trim()||((r.TripDate_UTC||'')+' 09:00:00');
+   const key=st+'|'+when;
+   if(!byStation[st])byStation[st]={name:st,events:{},lat:parseFloat(r.Latitude),lon:parseFloat(r.Longitude)};
+   byStation[st].events[key]={when,secchi:v,
+     lat:parseFloat(r.Latitude)||byStation[st].lat, lon:parseFloat(r.Longitude)||byStation[st].lon};
+  });
+  const list=Object.values(byStation).map(st=>{
+   const ev=Object.values(st.events).sort((a,b)=>a.when.localeCompare(b.when));
+   return {...st,ev,n:ev.length,from:ev[0].when.slice(0,10),to:ev[ev.length-1].when.slice(0,10)};
+  }).filter(st=>st.n>=20).sort((a,b)=>b.n-a.n);
+  if(!list.length){box.innerHTML='<div class="otext bad">No station had 20 or more Secchi readings.</div>';return}
+  refParsed=list;
+  box.innerHTML='<div class="otext">Found <b>'+list.length+'</b> stations with usable Secchi. '
+   +'Pick one and it will backfill conditions for every sampling date.</div>'
+   +'<div class="caltbl"><div class="chead" style="grid-template-columns:1fr 46px 92px 84px">'
+   +'<span>station</span><span>n</span><span>range</span><span></span></div>'
+   +list.map((st,i)=>'<div class="crow" style="grid-template-columns:1fr 46px 92px 84px">'
+     +'<span>'+st.name+'</span><span>'+st.n+'</span>'
+     +'<span>'+st.from.slice(0,4)+'\u2013'+st.to.slice(0,4)+'</span>'
+     +'<button class="btn" data-ref="'+i+'" style="padding:5px 9px;font-size:12px">Backfill</button></div>').join('')
+   +'</div>';
+  box.querySelectorAll('button[data-ref]').forEach(b=>
+   b.addEventListener('click',()=>backfillStation(list[+b.dataset.ref])));
+ };
+ fr.readAsText(file);
+}
+
+/* One archive call per year covers every event in it, and keeps the lag
+   windows continuous. Far fewer requests than one call per sample. */
+async function backfillStation(st){
+ const box=document.getElementById('refOut');
+ const depthEl=document.getElementById('refDepth');
+ const depth=parseFloat(depthEl.value)||30;
+ const spot={id:'ref_'+st.name.toLowerCase().replace(/[^a-z0-9]+/g,'_'),
+   name:st.name, lat:st.lat, lon:st.lon, type:'shelf', dMin:depth,
+   vMax:Math.max(...st.ev.map(e=>e.secchi)), vMin:Math.min(...st.ev.map(e=>e.secchi))};
+ const years=[...new Set(st.ev.map(e=>e.when.slice(0,4)))].sort();
+ const t=thresholds(), out=[];
+ let done=0, noMarine=0;
+
+ for(const y of years){
+  box.innerHTML='<div class="skel" style="height:30px"></div><div class="otext">'
+   +st.name+': fetching '+y+' ('+(done)+' of '+st.ev.length+' events done)…</div>';
+  const from=(+y-1)+'-12-20', to=y+'-12-31';
+  const [w,m]=await Promise.all([
+   settle(getJSON(archWindURL(spot,from,to))),
+   settle(getJSON(archMarineURL(spot,from,to)))
+  ]);
+  if(!w.ok)continue;
+  const wh=w.value[0].hourly, mh=m.ok?m.value[0].hourly:null;
+  if(!mh)noMarine++;
+  const blocks=buildBlocks(wh,mh,null,spot,t,1);
+  computeVis(blocks,spot,mh?tideTurnsFrom(mh):{turns:[]},1);
+  const idx={}; blocks.forEach(b=>idx[b.time]=b);
+  st.ev.filter(e=>e.when.slice(0,4)===y).forEach(e=>{
+   const hh=e.when.slice(11,13)||'09';
+   const key=e.when.slice(0,10)+'T'+hh+':00';
+   const b=idx[key]||idx[e.when.slice(0,10)+'T09:00'];
+   if(!b)return;
+   done++;
+   out.push({
+    id:'ref_'+spot.id+'_'+key.replace(/[^0-9]/g,''),
+    v:ENGINE_VERSION, source:'aodn-secchi', units:'secchi_m',
+    station:st.name, ts:key, spot:spot.id, spotName:st.name, type:'shelf', depth,
+    windKmh:+b.kt.toFixed(1), windDir:b.dir!=null?Math.round(b.dir):null,
+    gustKmh:b.gust!=null?+b.gust.toFixed(1):null,
+    seaM:b.waveH!=null?+b.waveH.toFixed(2):null, seaS:b.waveP!=null?+b.waveP.toFixed(1):null,
+    swellM:(()=>{const q=b.trains.find(x=>x.label==='Primary');return q?+q.h.toFixed(2):null})(),
+    swellS:(()=>{const q=b.trains.find(x=>x.label==='Primary');return q?+(q.p||0).toFixed(1):null})(),
+    ubMs:b.ub!=null?+b.ub.toFixed(4):null, ekman:b.ekman!=null?+b.ekman.toFixed(3):null,
+    sstC:b.sst!=null?+b.sst.toFixed(2):null, sstAnom:b.sstAnom!=null?+b.sstAnom.toFixed(2):null,
+    rain72mm:b.rain72!=null?+b.rain72.toFixed(1):null,
+    tideM:b.tide!=null?+b.tide.toFixed(2):null, tideDir:b.fDir||null,
+    visPredictedM:b.visM!=null?+b.visM.toFixed(1):null,
+    visObservedM:e.secchi
+   });
+  });
+ }
+ if(!out.length){box.innerHTML='<div class="otext bad">No conditions could be reconstructed. '
+   +'The archive may not cover these dates.</div>';return}
+ const keep=refRead().filter(r=>r.station!==st.name).concat(out);
+ refWrite(keep);
+ const withMarine=out.filter(r=>r.seaM!=null).length;
+ box.innerHTML='<div class="otext good">Backfilled <b>'+out.length+'</b> events for '+st.name+'.'
+  +'<br>'+withMarine+' have wave data'+(withMarine<out.length?', '+(out.length-withMarine)+' are wind-only':'')+'.'
+  +'<br>Station depth used: '+depth+' m. Change it above and backfill again if that is wrong.</div>';
+ buildCalSelect(); renderCalibration();
 }
 
 /* ---- chips ---- */
@@ -2419,6 +2600,11 @@ function buildBulkSpotSelect(){
  el.innerHTML=SPOTS().map(sp=>'<option value="'+sp.id+'"'+(sp.id===state.spot?' selected':'')+'>'+sp.name+'</option>').join('');
 }
 document.getElementById('bulkRun').addEventListener('click',runBulk);
+document.getElementById('refFile').addEventListener('change',e=>{
+ if(e.target.files&&e.target.files[0])onRefFile(e.target.files[0]);
+ e.target.value='';
+});
+document.getElementById('calSet').addEventListener('change',renderCalibration);
 document.getElementById('logImport').addEventListener('change',e=>{
  if(e.target.files&&e.target.files[0])logImport(e.target.files[0]);
  e.target.value='';
