@@ -776,10 +776,26 @@ function computeVis(out,spot,turns,step){
   // --- water mass: Ekman, weighted toward 1-3 days back for the bloom lag ---
   // cos(bearing) is +1 for a northerly (upwelling, green) and -1 for a
   // southerly (downwelling, clean EAC water pushed inshore)
+  /* Window widened and pushed later. Against 173 readings at North Stradbroke
+     with 10 days of hourly history behind each one, the direction signal is
+     absent at 6-24 h and peaks around 96-120 h back:
+
+        window   6h    12h   24h   48h   72h   120h  168h
+        speed   -.32  -.28  -.19  -.20  -.22  -.13  -.05
+        northerly -.03 -.04 -.11  -.15  -.20  -.23  -.14
+
+     Two separate mechanisms. Wind speed mixes the column within hours. Wind
+     direction changes which water is sitting there, and takes days.
+
+     Held out by year, no centre between 42 and 120 h is measurably better than
+     another (all |t| under 0.8 against a standard error of 0.05). Centred at
+     72 h as the compromise: it is where the raw correlation has clearly risen,
+     it scored best of the options tried, and it matches the physics better than
+     42 h did. Not a data-forced choice. */
   let ek=0,wE=0;
-  for(let h=6;h<=84;h+=3){
+  for(let h=12;h<=168;h+=3){
    const p=at(i-back(h)); if(!p)continue;
-   const w=Math.exp(-Math.pow((h-42)/26,2));
+   const w=Math.exp(-Math.pow((h-72)/38,2));
    ek+=w*Math.min(1,Math.pow(p.kt/40,2))*Math.cos(p.dir*Math.PI/180);
    wE+=w;
   }
@@ -1911,6 +1927,16 @@ async function loadRepoObs(){
   if(!r.ok)return;
   const j=await r.json();
   repoObs=Array.isArray(j)?j:(j.observations||[]);
+  /* Reference readings live in the same committed file. Without this they would
+     survive a commit but never be read back, so a cache clear would still lose
+     them and the calibration panel would come up empty. */
+  if(j&&Array.isArray(j.reference)&&j.reference.length){
+   const byId={};
+   j.reference.forEach(x=>{if(x&&x.id)byId[x.id]=x});
+   refRead().forEach(x=>{if(x&&x.id&&!byId[x.id])byId[x.id]=x});
+   const merged=Object.values(byId);
+   if(merged.length!==refRead().length)refWrite(merged);
+  }
  }catch(e){repoObs=[]}
 }
 function storageHealth(){
@@ -1957,7 +1983,7 @@ function renderHealth(){
  const h=storageHealth(), nref=refRead().length;
  const last=store.get('lastExport');
  el.innerHTML='<b>'+h.total+'</b> dive records'+(nref?' &middot; <b>'+nref+'</b> reference readings':'')
-  +' &middot; '+h.committed+' committed to the repo &middot; '
+  +' &middot; '+h.committed+' dive records committed &middot; '
   +(h.unexported?'<b class="bad">'+h.unexported+' only on this device</b>':'<b class="good">all backed up</b>')
   +'<br>'+(last?'Last export '+last.slice(0,16).replace('T',' ')+'. ':'Never exported. ')
   +'Local records live in Safari website data and are lost if you clear it. Export JSON, commit it to '
@@ -2062,11 +2088,7 @@ async function exportText(name,text,mime){
 }
 function download(name,text,mime){return exportText(name,text,mime)}
 
-const REF_COORDS={
- 'North Stradbroke Island':[-27.345,153.562],'Yongala':[-19.3085,147.6184],
- 'Port Hacking':[-34.1192,151.2267],'Maria Island':[-42.5967,148.2333],
- 'Rottnest Island':[-32.0,115.4167],'Darwin':[-12.4,130.768]
-};
+
 function recordSpot(r){
  const c=REF_COORDS[r.station]||[r.lat,r.lon];
  return {id:r.spot,name:r.station,lat:r.lat!=null?r.lat:c[0],lon:r.lon!=null?r.lon:c[1],
@@ -2076,6 +2098,10 @@ function recordSpot(r){
    baked in upstream, so a point-in-time export cannot be used to refit them.
    With the raw series any lag can be tested offline with no further round trip. */
 async function exportConditions(){
+ if(!claimJob('A conditions export'))return;
+ try{ await exportConditionsInner() } finally { releaseJob() }
+}
+async function exportConditionsInner(){
  const ref=refRead(), note=document.getElementById('exportNote');
  const say=m=>{if(note)note.innerHTML='<div class="otext">'+m+'</div>'};
  if(!ref.length){say('<span class="bad">Backfill a station first.</span>');return}
@@ -2115,10 +2141,29 @@ async function exportConditions(){
   });
   out.stations.push(st);
  }
+ /* Cross-check before handing the file over. Every sample must trace back to a
+    record actually filed under that station, and the totals must match. A
+    previous export silently mixed two stations 1000 km apart, which would have
+    poisoned any analysis built on it. */
+ const problems=[];
+ out.stations.forEach(x=>{
+  const owned=new Set((byStation[x.station]||[]).map(r=>r.ts));
+  const stray=x.samples.filter(sm=>!owned.has(sm.ts)).length;
+  if(stray)problems.push(x.station+': '+stray+' samples do not belong to it');
+  if(x.samples.length>owned.size)
+   problems.push(x.station+': '+x.samples.length+' samples from only '+owned.size+' records');
+ });
+ if(problems.length){
+  say('<span class="bad">Export aborted, the data does not check out:<br>'
+   +problems.join('<br>')+'<br>Reload the page and try again with nothing else running.</span>');
+  return;
+ }
  const txt=JSON.stringify(out);
  const n=out.stations.reduce((a,x)=>a+x.samples.length,0);
- say('Built <b>'+Math.round(txt.length/1024)+' KB</b>: '+n+' readings, each with '+LOOKBACK
-   +' days of hourly wind behind it. Sharing now…');
+ say('Built <b>'+Math.round(txt.length/1024)+' KB</b>. '
+  +out.stations.map(x=>x.station+': <b>'+x.samples.length+'</b> of '+(byStation[x.station]||[]).length
+    +(x.samples.length?'':' <span class="bad">(archive returned nothing)</span>')).join('<br>')
+  +'<br>Each carries '+LOOKBACK+' days of hourly wind. Sharing now…');
  await exportText('conditions.json',txt,'application/json');
 }
 
@@ -2211,6 +2256,12 @@ const MARINE_LADDER=[
 /* Always start from the richest rung. Variable availability varies by year, so
    remembering a lean tier from an early year would silently starve every later
    one. The cost is at most one rejected request per year. */
+let busyJob=null;                      // guards the long-running archive jobs
+function claimJob(name){
+ if(busyJob){alert(busyJob+' is still running. Wait for it to finish.');return false}
+ busyJob=name; return true;
+}
+function releaseJob(){busyJob=null}
 let lastMarineErr=null;
 async function archMarine(spot,from,to){
  for(const model of MARINE_MODELS){
@@ -2709,7 +2760,23 @@ function renderCalibration(){
    What Secchi cannot give is absolute scale. Site ceilings still come from
    logged dives.
 ========================================================================= */
-function refRead(){try{return JSON.parse(store.get('refdata')||'[]')}catch(e){return []}}
+const REF_COORDS={
+ 'North Stradbroke Island':[-27.345,153.562],'Yongala':[-19.3085,147.6184],
+ 'Port Hacking':[-34.1192,151.2267],'Maria Island':[-42.5967,148.2333],
+ 'Rottnest Island':[-32.0,115.4167],'Darwin':[-12.4,130.768]
+};
+function refRead(){
+ try{
+  const a=JSON.parse(store.get('refdata')||'[]');
+  // records written before coordinates were stored still resolve by station name
+  a.forEach(r=>{
+   if((r.lat==null||r.lon==null)&&REF_COORDS[r.station]){
+    r.lat=REF_COORDS[r.station][0]; r.lon=REF_COORDS[r.station][1];
+   }
+  });
+  return a;
+ }catch(e){return []}
+}
 function refWrite(a){try{store.set('refdata',JSON.stringify(a))}catch(e){alert('Storage full. Export and clear some records.')}}
 
 function parseCsv(text){
@@ -2781,6 +2848,10 @@ function onRefFile(file){
 /* One archive call per year covers every event in it, and keeps the lag
    windows continuous. Far fewer requests than one call per sample. */
 async function backfillStation(st){
+ if(!claimJob('A backfill'))return;
+ try{ await backfillStationInner(st) } finally { releaseJob() }
+}
+async function backfillStationInner(st){
  const box=document.getElementById('refOut');
  const depthEl=document.getElementById('refDepth');
  const depth=parseFloat(depthEl.value)||30;
