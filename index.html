@@ -385,6 +385,7 @@ details[open] summary::after{content:' −'}
       <div id="exportNote"></div>
       <div class="logform" style="margin-top:10px">
         <button class="btn" id="logExportJson">Export JSON</button>
+        <button class="btn" id="expCond">Export conditions</button>
         <button class="btn" id="logExport">Export CSV</button>
         <label class="btn" for="logImport" style="cursor:pointer">Import</label>
         <input id="logImport" type="file" accept="application/json,.json" style="display:none">
@@ -831,25 +832,30 @@ function computeVis(out,spot,turns,step){
      is the more sensible mechanism. */
   const mixKmh=(b.gust!=null?b.gust:b.kt);
   const windMix=Math.min(1,Math.pow(Math.max(0,mixKmh-11)/34,1.15));
+  /* Runoff is a coastal band, not a shelf-wide event. Past a few kilometres you
+     cross the dirty line into clean water, which is why rain shows no effect at
+     all at the 36 km reference station (rho -0.05 across 173 readings). */
+  const offKm=spot.offshoreKm!=null?spot.offshoreKm:(type==='estuarine'?0.5:type==='oceanic'?60:6);
+  const rainReach=Math.exp(-offKm/7);
   const ceiling=Math.max(0,Math.min(100,
     76
     - 34*Math.min(1.6,stirLag)
     - 22*windMix
     - 10*b.ekman
     +  6*Math.max(-2,Math.min(2,b.sstAnom))
-    - Math.min(18,b.rain72*0.9)
+    - rainReach*Math.min(18,b.rain72*0.9)
     + seasonAdj(b.dt,spot)
   ));
 
   if(type==='oceanic'){
    // 80 km offshore: clear by default, only swell and settling really bite
-   b.vis=Math.max(0,Math.min(100, 94 - 30*Math.min(1.6,stirLag) - 10*windMix - Math.min(8,b.rain72*0.3)));
+   b.vis=Math.max(0,Math.min(100, 94 - 30*Math.min(1.6,stirLag) - 10*windMix));
    b.visWhy=stirLag>0.7?'swell stirring the bottom':windMix>0.5?'wind mixing the surface':'settled';
   } else if(type==='shelf'){
    b.vis=ceiling;
    b.visWhy=stirLag>0.8?'swell stirring the bottom'
      :windMix>0.55?'wind mixing the water column'
-     :b.rain72>8?'catchment runoff'
+     :(b.rain72*rainReach)>6?'catchment runoff'
      :b.ekman>0.3?'northerly, some upwelling risk'
      :b.ekman<-0.2?'southerly, clean water in':'settled';
   } else {
@@ -2056,6 +2062,66 @@ async function exportText(name,text,mime){
 }
 function download(name,text,mime){return exportText(name,text,mime)}
 
+const REF_COORDS={
+ 'North Stradbroke Island':[-27.345,153.562],'Yongala':[-19.3085,147.6184],
+ 'Port Hacking':[-34.1192,151.2267],'Maria Island':[-42.5967,148.2333],
+ 'Rottnest Island':[-32.0,115.4167],'Darwin':[-12.4,130.768]
+};
+function recordSpot(r){
+ const c=REF_COORDS[r.station]||[r.lat,r.lon];
+ return {id:r.spot,name:r.station,lat:r.lat!=null?r.lat:c[0],lon:r.lon!=null?r.lon:c[1],
+         type:r.type||'shelf',dMin:r.depth||30};
+}
+/* Dumps the hourly wind history behind every reference reading. Lag windows are
+   baked in upstream, so a point-in-time export cannot be used to refit them.
+   With the raw series any lag can be tested offline with no further round trip. */
+async function exportConditions(){
+ const ref=refRead(), note=document.getElementById('exportNote');
+ const say=m=>{if(note)note.innerHTML='<div class="otext">'+m+'</div>'};
+ if(!ref.length){say('<span class="bad">Backfill a station first.</span>');return}
+ const LOOKBACK=10;                     // days of history kept before each reading
+ const byStation={};
+ ref.forEach(r=>{(byStation[r.station]=byStation[r.station]||[]).push(r)});
+ const out={exported:new Date().toISOString(),engine:ENGINE_VERSION,lookbackDays:LOOKBACK,stations:[]};
+ for(const [name,recs] of Object.entries(byStation)){
+  const sp=recordSpot(recs[0]);
+  const years=[...new Set(recs.map(r=>r.ts.slice(0,4)))].sort();
+  const st={station:name,lat:sp.lat,lon:sp.lon,depth:recs[0].depth,samples:[]};
+  const idx={};
+  for(let i=0;i<years.length;i++){
+   const y=years[i];
+   say('Pulling hourly history: <b>'+name+' '+y+'</b> ('+(i+1)+' of '+years.length+')…');
+   const w=await settle(getJSON(archWindURL(sp,(+y-1)+'-12-15',y+'-12-31')));
+   if(!w.ok)continue;
+   const h=w.value[0].hourly;
+   h.time.forEach((t,j)=>{idx[t]={ws:h.wind_speed_10m[j],wd:h.wind_direction_10m[j],
+     gs:h.wind_gusts_10m?h.wind_gusts_10m[j]:null,pr:h.precipitation?h.precipitation[j]:null}});
+  }
+  /* Only the window before each reading is kept. The lag terms never look back
+     further than a few days, so whole years would be mostly dead weight. */
+  recs.forEach(r=>{
+   const end=new Date(r.ts), start=new Date(end); start.setDate(start.getDate()-LOOKBACK);
+   const ws=[],wd=[],gs=[],pr=[];
+   for(let t=new Date(start);t<=end;t.setHours(t.getHours()+1)){
+    const k=t.getFullYear()+'-'+pad2(t.getMonth()+1)+'-'+pad2(t.getDate())+'T'+pad2(t.getHours())+':00';
+    const v=idx[k];
+    ws.push(v&&v.ws!=null?Math.round(v.ws):null);
+    wd.push(v&&v.wd!=null?Math.round(v.wd):null);
+    gs.push(v&&v.gs!=null?Math.round(v.gs):null);
+    pr.push(v&&v.pr!=null?Math.round(v.pr*10)/10:null);
+   }
+   if(ws.some(x=>x!=null))
+    st.samples.push({ts:r.ts,obs:r.visObservedM,t0:start.toISOString().slice(0,13)+':00',ws,wd,gs,pr});
+  });
+  out.stations.push(st);
+ }
+ const txt=JSON.stringify(out);
+ const n=out.stations.reduce((a,x)=>a+x.samples.length,0);
+ say('Built <b>'+Math.round(txt.length/1024)+' KB</b>: '+n+' readings, each with '+LOOKBACK
+   +' days of hourly wind behind it. Sharing now…');
+ await exportText('conditions.json',txt,'application/json');
+}
+
 function logExportJSON(){
  const dives=logRead(), ref=refRead();
  if(!dives.length&&!ref.length){
@@ -2750,6 +2816,7 @@ async function backfillStation(st){
     id:'ref_'+spot.id+'_'+key.replace(/[^0-9]/g,''),
     v:ENGINE_VERSION, source:'aodn-secchi', units:'secchi_m',
     station:st.name, ts:key, spot:spot.id, spotName:st.name, type:'shelf', depth,
+    lat:+st.lat.toFixed(4), lon:+st.lon.toFixed(4),
     windKmh:+b.kt.toFixed(1), windDir:b.dir!=null?Math.round(b.dir):null,
     gustKmh:b.gust!=null?+b.gust.toFixed(1):null,
     seaM:b.waveH!=null?+b.waveH.toFixed(2):null, seaS:b.waveP!=null?+b.waveP.toFixed(1):null,
@@ -2840,6 +2907,7 @@ document.getElementById('logDetails').addEventListener('toggle',e=>{if(e.target.
 document.getElementById('logSave').addEventListener('click',logSave);
 document.getElementById('logExport').addEventListener('click',logExport);
 document.getElementById('logExportJson').addEventListener('click',logExportJSON);
+document.getElementById('expCond').addEventListener('click',exportConditions);
 document.getElementById('hcRun').addEventListener('click',runHindcast);
 function buildBulkSpotSelect(){
  const el=document.getElementById('bulkSpot'); if(!el)return;
