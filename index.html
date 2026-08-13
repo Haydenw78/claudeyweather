@@ -169,6 +169,8 @@ details[open] summary::after{content:' −'}
 .hcbox{border-top:1px solid var(--hairline);margin-top:16px}
 .hcres{padding:12px 0 2px}
 .hcbig{font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:500}
+.exportbox{width:100%;height:120px;margin-top:8px;background:var(--ink-2);border:1px solid var(--hairline);
+  color:var(--dim);font-family:'IBM Plex Mono',monospace;font-size:10px;padding:8px;border-radius:2px}
 #bulkText{width:100%;margin-top:10px;background:var(--ink-2);border:1px solid var(--hairline);
   color:var(--buff);font-family:'IBM Plex Mono',monospace;font-size:13px;line-height:1.6;
   padding:10px;border-radius:2px;resize:vertical}
@@ -369,6 +371,7 @@ details[open] summary::after{content:' −'}
         <input id="refFile" type="file" accept=".csv,text/csv" style="display:none">
         <label for="refDepth">Station depth (m)</label>
         <input id="refDepth" type="number" inputmode="decimal" value="30">
+        <button class="btn" id="refProbe">Probe archive</button>
       </div>
       <div id="refOut"></div>
 
@@ -379,6 +382,7 @@ details[open] summary::after{content:' −'}
       </div>
       <div id="calBox"></div>
       <div class="otext" id="logHealth" style="margin-top:18px"></div>
+      <div id="exportNote"></div>
       <div class="logform" style="margin-top:10px">
         <button class="btn" id="logExportJson">Export JSON</button>
         <button class="btn" id="logExport">Export CSV</button>
@@ -611,7 +615,12 @@ const ensURL=s=>'https://ensemble-api.open-meteo.com/v1/ensemble?'+new URLSearch
 
 async function getJSON(u){
  const r=await fetch(u,{cache:'no-store'});
- if(!r.ok)throw new Error('HTTP '+r.status);
+ if(!r.ok){
+  // Open-Meteo puts the useful part in the body, not the status line
+  let why='';
+  try{const e=await r.json(); why=e&&e.reason?': '+e.reason:''}catch(_){}
+  throw new Error('HTTP '+r.status+why);
+ }
  const j=await r.json();return Array.isArray(j)?j:[j];
 }
 async function settle(p){try{return{ok:true,value:await p}}catch(e){return{ok:false,error:e.message}}}
@@ -1893,9 +1902,10 @@ function renderLogCtx(){
 }
 function renderHealth(){
  const el=document.getElementById('logHealth'); if(!el)return;
- const h=storageHealth();
+ const h=storageHealth(), nref=refRead().length;
  const last=store.get('lastExport');
- el.innerHTML='<b>'+h.total+'</b> records &middot; '+h.committed+' committed to the repo &middot; '
+ el.innerHTML='<b>'+h.total+'</b> dive records'+(nref?' &middot; <b>'+nref+'</b> reference readings':'')
+  +' &middot; '+h.committed+' committed to the repo &middot; '
   +(h.unexported?'<b class="bad">'+h.unexported+' only on this device</b>':'<b class="good">all backed up</b>')
   +'<br>'+(last?'Last export '+last.slice(0,16).replace('T',' ')+'. ':'Never exported. ')
   +'Local records live in Safari website data and are lost if you clear it. Export JSON, commit it to '
@@ -1962,23 +1972,70 @@ function logSave(){
  store.set('lastLogAt',new Date().toISOString());
  renderLog();
 }
-function download(name,text,mime){
- const url=URL.createObjectURL(new Blob([text],{type:mime}));
- const a=document.createElement('a');
- a.href=url; a.download=name; a.click();
- setTimeout(()=>URL.revokeObjectURL(url),2000);
+/* iOS home-screen apps block anchor downloads, so offer the ways that do work
+   there: the share sheet, the clipboard, then a selectable box as a last resort. */
+async function exportText(name,text,mime){
+ const note=document.getElementById('exportNote');
+ const show=(msg,cls)=>{if(note)note.innerHTML='<div class="otext '+(cls||'')+'">'+msg+'</div>'};
+ // 1. share sheet, which on iOS can save straight to Files
+ try{
+  if(navigator.canShare&&navigator.canShare({files:[new File([text],name,{type:mime})]})){
+   await navigator.share({files:[new File([text],name,{type:mime})],title:name});
+   show('Shared '+name+'.','good'); return true;
+  }
+ }catch(e){ if(e&&e.name==='AbortError'){show('Cancelled.');return false} }
+ // 2. clipboard
+ try{
+  await navigator.clipboard.writeText(text);
+  show('Copied '+Math.round(text.length/1024)+' KB to the clipboard. Paste it into '
+   +'<b>data/observations.json</b> in the repo, or into a message.','good');
+  return true;
+ }catch(e){}
+ // 3. anchor download
+ try{
+  const url=URL.createObjectURL(new Blob([text],{type:mime}));
+  const a=document.createElement('a');
+  a.href=url; a.download=name; a.rel='noopener';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),4000);
+  show('Downloaded '+name+'. If nothing appeared, use the box below.','good');
+ }catch(e){}
+ // 4. always leave a selectable copy
+ if(note){
+  note.innerHTML+='<textarea class="exportbox" readonly onclick="this.select()">'
+   +text.replace(/</g,'&lt;')+'</textarea>'
+   +'<div class="otext">Tap the box to select all, then copy.</div>';
+ }
+ return true;
 }
+function download(name,text,mime){return exportText(name,text,mime)}
+
 function logExportJSON(){
- const rows=logRead(); if(!rows.length)return;
- download('observations.json',JSON.stringify(rows,null,1),'application/json');
+ const dives=logRead(), ref=refRead();
+ if(!dives.length&&!ref.length){
+  const n=document.getElementById('exportNote');
+  if(n)n.innerHTML='<div class="otext bad">Nothing to export yet.</div>';
+  return;
+ }
+ const payload={
+  exported:new Date().toISOString(), engine:ENGINE_VERSION,
+  counts:{dives:dives.length,reference:ref.length},
+  observations:dives, reference:ref
+ };
+ exportText('observations.json',JSON.stringify(payload,null,1),'application/json');
  store.set('lastExport',new Date().toISOString());
- renderLog();
+ renderHealth();
 }
 function logImport(file){
  const fr=new FileReader();
  fr.onload=()=>{
   try{
    const j=JSON.parse(fr.result);
+   if(j&&Array.isArray(j.reference)&&j.reference.length){
+    const cr={}; refRead().forEach(r=>cr[r.id]=r);
+    j.reference.forEach(r=>{if(r&&r.id)cr[r.id]=r});
+    refWrite(Object.values(cr)); buildCalSelect();
+   }
    const inc=Array.isArray(j)?j:(j.observations||[]);
    const cur=logRead(), byId={};
    cur.forEach(r=>{if(r.id)byId[r.id]=r});
@@ -1991,6 +2048,15 @@ function logImport(file){
  fr.readAsText(file);
 }
 function logExport(){
+ const ref=refRead();
+ if(!logRead().length&&ref.length){
+  const cols=Object.keys(ref[0]);
+  const csv=[cols.join(',')].concat(ref.map(r=>cols.map(c=>{
+   const x=r[c]; return x==null?'':(typeof x==='string'&&/[",]/.test(x)?'"'+x.replace(/"/g,'""')+'"':x);
+  }).join(','))).join('\n');
+  exportText('reference.csv',csv,'text/csv');
+  return;
+ }
  const rows=logRead(); if(!rows.length)return;
  const cols=Object.keys(rows[0]);
  const csv=[cols.join(',')].concat(rows.map(r=>cols.map(c=>{
@@ -2011,12 +2077,16 @@ const archWindURL=(sp,a,b)=>'https://archive-api.open-meteo.com/v1/archive?'+new
  latitude:sp.lat,longitude:sp.lon,start_date:a,end_date:b,
  hourly:'wind_speed_10m,wind_direction_10m,wind_gusts_10m,pressure_msl,precipitation,temperature_2m',
  wind_speed_unit:'kmh',timezone:TZ});
-const archMarineVars=v=>(sp,a,b)=>'https://marine-api.open-meteo.com/v1/marine?'+new URLSearchParams({
- latitude:sp.lat,longitude:sp.lon,start_date:a,end_date:b,hourly:v.join(','),timezone:TZ});
-const archMarineURL=archMarineVars(MARINE_BASE.concat(MARINE_TRAINS));
+const archMarineVars=(v,model)=>(sp,a,b)=>{
+ const q={latitude:sp.lat,longitude:sp.lon,start_date:a,end_date:b,hourly:v.join(','),timezone:TZ};
+ if(model)q.models=model;
+ return 'https://marine-api.open-meteo.com/v1/marine?'+new URLSearchParams(q);
+};
+const archMarineURL=archMarineVars(MARINE_BASE.concat(MARINE_TRAINS),'');
 /* Progressively simpler requests. Older archives carry fewer variables, and a
    single unsupported one rejects the entire call, so try the richest first and
    fall back rather than losing waves, tide and SST altogether. */
+const MARINE_MODELS=['','ewam','gwam'];      // '' = let the API choose
 const MARINE_LADDER=[
  MARINE_BASE.concat(MARINE_TRAINS),
  ['wave_height','wave_period','wave_direction','swell_wave_height','swell_wave_period','swell_wave_direction',
@@ -2029,18 +2099,48 @@ const MARINE_LADDER=[
 /* Always start from the richest rung. Variable availability varies by year, so
    remembering a lean tier from an early year would silently starve every later
    one. The cost is at most one rejected request per year. */
+let lastMarineErr=null;
 async function archMarine(spot,from,to){
- for(let i=0;i<MARINE_LADDER.length;i++){
-  const r=await settle(getJSON(archMarineVars(MARINE_LADDER[i])(spot,from,to)));
-  if(r.ok&&r.value[0]&&r.value[0].hourly){
-   const h=r.value[0].hourly;
-   // a tier that returns the key but fills it with nulls is not really serving it
+ for(const model of MARINE_MODELS){
+  for(let i=0;i<MARINE_LADDER.length;i++){
+   const r=await settle(getJSON(archMarineVars(MARINE_LADDER[i],model)(spot,from,to)));
+   if(!r.ok){lastMarineErr=(model||'auto')+' tier'+i+' '+r.error;continue}
+   const h=r.value[0]&&r.value[0].hourly;
+   if(!h)continue;
    const live=k=>h[k]&&h[k].some(v=>v!=null);
-   return {hourly:h,tier:i,vars:MARINE_LADDER[i],
+   if(!live('wave_height')){lastMarineErr=(model||'auto')+' tier'+i+' returned only nulls';continue}
+   return {hourly:h,tier:i,model:model||'auto',vars:MARINE_LADDER[i],
            hasSst:live('sea_surface_temperature'),hasTide:live('sea_level_height_msl')};
   }
  }
- return {hourly:null,tier:-1,vars:[],hasSst:false,hasTide:false};
+ return {hourly:null,tier:-1,model:null,vars:[],hasSst:false,hasTide:false,err:lastMarineErr};
+}
+
+/* Tells you exactly what the archive will and will not serve for a location and
+   year, so a silent gap can be diagnosed instead of guessed at. */
+async function probeArchive(){
+ const out=document.getElementById('refOut');
+ const spot=SPOT();
+ const yrs=['2010','2015','2020','2024',String(new Date().getFullYear())];
+ out.innerHTML='<div class="skel" style="height:30px"></div><div class="otext">Probing the archive at '+spot.name+'…</div>';
+ const lines=[];
+ for(const y of yrs){
+  const a=y+'-06-01', b=y+'-06-07';
+  const w=await settle(getJSON(archWindURL(spot,a,b)));
+  const m=await archMarine(spot,a,b);
+  const wOK=w.ok&&w.value[0]&&w.value[0].hourly&&w.value[0].hourly.wind_speed_10m
+            &&w.value[0].hourly.wind_speed_10m.some(v=>v!=null);
+  lines.push('<div class="crow2" style="grid-template-columns:52px 60px 1fr">'
+   +'<span>'+y+'</span>'
+   +'<span style="color:'+(wOK?'var(--drying)':'var(--magenta)')+'">'+(wOK?'wind ok':'no wind')+'</span>'
+   +'<span style="color:'+(m.hourly?'var(--drying)':'var(--magenta)')+'">'
+   +(m.hourly?('waves ok \u00b7 '+m.model+' tier'+m.tier+(m.hasSst?' \u00b7 SST':' \u00b7 no SST')+(m.hasTide?' \u00b7 tide':' \u00b7 no tide'))
+             :('no waves'+(m.err?' \u2014 '+m.err:'')))+'</span></div>');
+ }
+ out.innerHTML='<div class="otext">Archive coverage at <b>'+spot.name+'</b> ('+spot.lat.toFixed(2)+', '+spot.lon.toFixed(2)+'), first week of June:</div>'
+  +'<div class="caltbl">'+lines.join('')+'</div>'
+  +'<div class="otext">Wind comes from ERA5 and should reach back decades. Wave archives are shorter. '
+  +'Where waves are missing, bed stirring and tide cannot be tested for that year.</div>';
 }
 
 const shiftDays=(iso,n)=>{const d=new Date(iso+'T00:00');d.setDate(d.getDate()+n);return iso0(d)};
@@ -2700,6 +2800,7 @@ function buildBulkSpotSelect(){
  el.innerHTML=SPOTS().map(sp=>'<option value="'+sp.id+'"'+(sp.id===state.spot?' selected':'')+'>'+sp.name+'</option>').join('');
 }
 document.getElementById('bulkRun').addEventListener('click',runBulk);
+document.getElementById('refProbe').addEventListener('click',probeArchive);
 document.getElementById('refFile').addEventListener('change',e=>{
  if(e.target.files&&e.target.files[0])onRefFile(e.target.files[0]);
  e.target.value='';
