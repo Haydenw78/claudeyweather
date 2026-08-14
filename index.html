@@ -489,7 +489,15 @@ const BASEMAPS=[{id:'imagery',label:'Satellite'},{id:'ocean',label:'Bathymetry'}
 const TILES={
  imagery:'https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/',
  ocean:'https://services.arcgisonline.com/arcgis/rest/services/Ocean/World_Ocean_Base/MapServer/tile/'};
-const TZ='Australia/Brisbane', DAYS=10, PAST=3;
+/* PAST is how much history we FETCH, SHOW_PAST is how much the chart displays.
+   They used to be the same 3 days, which silently broke the lookback terms:
+   the Ekman kernel is centred on 72 h and runs to 168 h, and the SST anomaly
+   averages 120 h. At the present moment those windows ran off the front of the
+   array and returned null, so the upwelling term was weighted at a fraction of
+   its intended strength on exactly the blocks you dive from, while being fully
+   weighted mid-forecast where synthetic history exists. Archive scores were
+   therefore never the live scores. Fetch 8 days, display 3. */
+const TZ='Australia/Brisbane', DAYS=10, PAST=8, SHOW_PAST=3;
 const DIRS=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
 const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -1182,7 +1190,13 @@ function windZones(t,yW,maxKmh){
 }
 
 function render(){
- const full=series(state.spot,state.model);
+ const fetched=series(state.spot,state.model);
+ /* computeVis has already run over the whole fetched array, so the lookback
+    terms have their full history. Trim only for display. */
+ const fStep=fetched.step||3, fNow=Math.max(0,fetched.findIndex(b=>!b.past));
+ const cut=Math.max(0,fNow-Math.round(SHOW_PAST*24/fStep));
+ const full=cut?fetched.slice(cut):fetched;
+ full.step=fStep;
  state.nowIndex=Math.max(0,full.findIndex(b=>!b.past));
  state.series=full.slice(state.nowIndex);        // forward only: windows, day cards
  state.chartSeries=full;                          // charts show past and forecast as one run
@@ -2132,66 +2146,129 @@ async function exportConditionsInner(){
  const ref=refRead(), note=document.getElementById('exportNote');
  const say=m=>{if(note)note.innerHTML='<div class="otext">'+m+'</div>'};
  if(!ref.length){say('<span class="bad">Backfill a station first.</span>');return}
- const LOOKBACK=10;                     // days of history kept before each reading
+
+ /* Two horizons, because they answer different questions and full hourly out
+    to 45 days would be tens of megabytes.
+      HOURLY_D  fine detail, for the lag work. The chlorophyll response sits at
+                0-48 h and a bloom lives a fortnight, so 14 days covers it.
+      DAILY_D   coarse summaries, for state variables like days since the last
+                northerly or the last real rain. Daily is plenty for those. */
+ const HOURLY_D=14, DAILY_D=45, CHUNK_Y=4;
+
  const byStation={};
  ref.forEach(r=>{(byStation[r.station]=byStation[r.station]||[]).push(r)});
- const out={exported:new Date().toISOString(),engine:ENGINE_VERSION,lookbackDays:LOOKBACK,stations:[]};
- for(const [name,recs] of Object.entries(byStation)){
+ const names=Object.keys(byStation);
+ const done=[], failed=[];
+
+ for(let si=0;si<names.length;si++){
+  const name=names[si], recs=byStation[name];
   const sp=recordSpot(recs[0]);
-  const years=[...new Set(recs.map(r=>r.ts.slice(0,4)))].sort();
-  const st={station:name,lat:sp.lat,lon:sp.lon,depth:recs[0].depth,samples:[]};
+  const years=[...new Set(recs.map(r=>r.ts.slice(0,4)))].map(Number).sort((a,b)=>a-b);
+  const y0=years[0], y1=years[years.length-1];
   const idx={};
-  for(let i=0;i<years.length;i++){
-   const y=years[i];
-   say('Pulling hourly history: <b>'+name+' '+y+'</b> ('+(i+1)+' of '+years.length+')…');
-   const w=await settle(getJSON(archWindURL(sp,(+y-1)+'-12-15',y+'-12-31')));
-   if(!w.ok)continue;
+  let aborted=null;
+
+  /* One request per few years rather than one per year. Seventeen years across
+     four stations was 68 calls, which runs into the hourly rate limit and is
+     why earlier exports came back with one station filled and the rest empty. */
+  for(let y=y0;y<=y1 && !aborted;y+=CHUNK_Y){
+   const a=(y-1)+'-11-01', b=Math.min(y+CHUNK_Y-1,y1)+'-12-31';
+   say('<b>'+name+'</b> ('+(si+1)+' of '+names.length+'): pulling '+a.slice(0,4)+' to '+b.slice(0,4)+'…');
+   const w=await settle(getJSON(archWindURL(sp,a,b)));
+   if(!w.ok){ aborted=(rateLimited?'rate limited':'archive request failed'); break }
    const h=w.value[0].hourly;
-   h.time.forEach((t,j)=>{idx[t]={ws:h.wind_speed_10m[j],wd:h.wind_direction_10m[j],
-     gs:h.wind_gusts_10m?h.wind_gusts_10m[j]:null,pr:h.precipitation?h.precipitation[j]:null}});
+   for(let j=0;j<h.time.length;j++){
+    idx[h.time[j]]={ws:h.wind_speed_10m[j],wd:h.wind_direction_10m[j],
+      gs:h.wind_gusts_10m?h.wind_gusts_10m[j]:null,
+      pr:h.precipitation?h.precipitation[j]:null,
+      sw:h.shortwave_radiation?h.shortwave_radiation[j]:null,
+      cc:h.cloud_cover?h.cloud_cover[j]:null,
+      tp:h.temperature_2m?h.temperature_2m[j]:null};
+   }
   }
-  /* Only the window before each reading is kept. The lag terms never look back
-     further than a few days, so whole years would be mostly dead weight. */
+  if(aborted){
+   failed.push(name+' ('+aborted+')');
+   say('<span class="bad">'+name+': '+aborted+'.</span> Stations already built have been shared. '
+     +'Wait for the hour to turn, then run this again and it will pick up the rest.');
+   if(aborted==='rate limited')break;
+   continue;
+  }
+
+  const key=t=>t.getFullYear()+'-'+pad2(t.getMonth()+1)+'-'+pad2(t.getDate())+'T'+pad2(t.getHours())+':00';
+  const st={station:name,lat:sp.lat,lon:sp.lon,depth:recs[0].depth,samples:[]};
+
   recs.forEach(r=>{
-   const end=new Date(r.ts), start=new Date(end); start.setDate(start.getDate()-LOOKBACK);
-   const ws=[],wd=[],gs=[],pr=[];
-   for(let t=new Date(start);t<=end;t.setHours(t.getHours()+1)){
-    const k=t.getFullYear()+'-'+pad2(t.getMonth()+1)+'-'+pad2(t.getDate())+'T'+pad2(t.getHours())+':00';
-    const v=idx[k];
+   const end=new Date(r.ts);
+   const hs=new Date(end); hs.setDate(hs.getDate()-HOURLY_D);
+   const ws=[],wd=[],gs=[],pr=[],sw=[],cc=[];
+   for(let t=new Date(hs);t<=end;t.setHours(t.getHours()+1)){
+    const v=idx[key(t)];
     ws.push(v&&v.ws!=null?Math.round(v.ws):null);
     wd.push(v&&v.wd!=null?Math.round(v.wd):null);
     gs.push(v&&v.gs!=null?Math.round(v.gs):null);
     pr.push(v&&v.pr!=null?Math.round(v.pr*10)/10:null);
+    sw.push(v&&v.sw!=null?Math.round(v.sw):null);
+    cc.push(v&&v.cc!=null?Math.round(v.cc):null);
    }
-   if(ws.some(x=>x!=null))
-    st.samples.push({ts:r.ts,obs:r.visObservedM,t0:start.toISOString().slice(0,13)+':00',ws,wd,gs,pr});
+   if(!ws.some(x=>x!=null))return;
+
+   /* Daily rollups back to DAILY_D. d0 is the day of the reading and the array
+      runs backwards in time, so d[k] is k days before the cast. Direction is
+      carried as a mean vector, since averaging compass degrees is meaningless. */
+   const d=[];
+   for(let k=0;k<DAILY_D;k++){
+    const day=new Date(end); day.setDate(day.getDate()-k);
+    let n=0,sws=0,mx=0,rain=0,swd=0,ccd=0,ns=0,ew=0,tp=0,nt=0;
+    for(let hh=0;hh<24;hh++){
+     const t=new Date(day); t.setHours(hh);
+     const v=idx[key(t)]; if(!v)continue;
+     if(v.ws!=null){ n++; sws+=v.ws; if(v.ws>mx)mx=v.ws;
+      if(v.wd!=null){ const rad=v.wd*Math.PI/180; ns+=v.ws*Math.cos(rad); ew+=v.ws*Math.sin(rad) } }
+     if(v.pr!=null)rain+=v.pr;
+     if(v.sw!=null)swd+=v.sw;
+     if(v.cc!=null)ccd+=v.cc;
+     if(v.tp!=null){tp+=v.tp;nt++}
+    }
+    if(!n){d.push(null);continue}
+    d.push({w:Math.round(sws/n), wx:Math.round(mx),
+      n:Math.round(ns/n*10)/10, e:Math.round(ew/n*10)/10,
+      r:Math.round(rain*10)/10, s:Math.round(swd/24), c:Math.round(ccd/n),
+      t:nt?Math.round(tp/nt*10)/10:null});
+   }
+
+   st.samples.push({ts:r.ts,obs:r.visObservedM,
+     t0:hs.toISOString().slice(0,13)+':00',ws,wd,gs,pr,sw,cc,daily:d});
   });
-  out.stations.push(st);
+
+  /* Cross-check before handing anything over. Every sample must trace back to a
+     record filed under this station. An early export silently mixed two stations
+     1000 km apart, which would have poisoned everything built on it. */
+  const owned=new Set(recs.map(r=>r.ts));
+  const stray=st.samples.filter(sm=>!owned.has(sm.ts)).length;
+  if(stray||st.samples.length>owned.size){
+   failed.push(name+': failed the ownership check');
+   say('<span class="bad">'+name+' aborted, the data does not check out. '
+     +'Reload the page and try again with nothing else running.</span>');
+   continue;
+  }
+  if(!st.samples.length){ failed.push(name+' (archive returned nothing)'); continue }
+
+  /* One file per station. The combined file ran to tens of megabytes, which the
+     iOS share sheet will not carry. */
+  const out={exported:new Date().toISOString(),engine:ENGINE_VERSION,
+    hourlyDays:HOURLY_D,dailyDays:DAILY_D,stations:[st]};
+  const txt=JSON.stringify(out);
+  const slug=name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+  say('<b>'+name+'</b>: '+st.samples.length+' of '+owned.size+' records, '
+    +Math.round(txt.length/1024)+' KB. Sharing now…');
+  await exportText('conditions-'+slug+'.json',txt,'application/json');
+  done.push(name+' ('+st.samples.length+')');
  }
- /* Cross-check before handing the file over. Every sample must trace back to a
-    record actually filed under that station, and the totals must match. A
-    previous export silently mixed two stations 1000 km apart, which would have
-    poisoned any analysis built on it. */
- const problems=[];
- out.stations.forEach(x=>{
-  const owned=new Set((byStation[x.station]||[]).map(r=>r.ts));
-  const stray=x.samples.filter(sm=>!owned.has(sm.ts)).length;
-  if(stray)problems.push(x.station+': '+stray+' samples do not belong to it');
-  if(x.samples.length>owned.size)
-   problems.push(x.station+': '+x.samples.length+' samples from only '+owned.size+' records');
- });
- if(problems.length){
-  say('<span class="bad">Export aborted, the data does not check out:<br>'
-   +problems.join('<br>')+'<br>Reload the page and try again with nothing else running.</span>');
-  return;
- }
- const txt=JSON.stringify(out);
- const n=out.stations.reduce((a,x)=>a+x.samples.length,0);
- say('Built <b>'+Math.round(txt.length/1024)+' KB</b>. '
-  +out.stations.map(x=>x.station+': <b>'+x.samples.length+'</b> of '+(byStation[x.station]||[]).length
-    +(x.samples.length?'':' <span class="bad">(archive returned nothing)</span>')).join('<br>')
-  +'<br>Each carries '+LOOKBACK+' days of hourly wind. Sharing now…');
- await exportText('conditions.json',txt,'application/json');
+
+ say('Done. Shared: '+(done.join(', ')||'none')
+   +(failed.length?'<br><span class="bad">Not shared: '+failed.join(', ')+'</span>':'')
+   +'<br>Each file carries '+HOURLY_D+' days of hourly wind, rain, radiation and cloud, '
+   +'plus '+DAILY_D+' days of daily rollups.');
 }
 
 function logExportJSON(){
@@ -2259,7 +2336,7 @@ function logExport(){
 ======================================================================== */
 const archWindURL=(sp,a,b)=>'https://archive-api.open-meteo.com/v1/archive?'+new URLSearchParams({
  latitude:sp.lat,longitude:sp.lon,start_date:a,end_date:b,
- hourly:'wind_speed_10m,wind_direction_10m,wind_gusts_10m,pressure_msl,precipitation,temperature_2m',
+ hourly:'wind_speed_10m,wind_direction_10m,wind_gusts_10m,pressure_msl,precipitation,temperature_2m,shortwave_radiation,cloud_cover',
  wind_speed_unit:'kmh',timezone:TZ});
 const archMarineVars=(v,model)=>(sp,a,b)=>{
  const q={latitude:sp.lat,longitude:sp.lon,start_date:a,end_date:b,hourly:v.join(','),timezone:TZ};
