@@ -1,0 +1,42 @@
+{
+  "generated_utc": "2026-08-15T02:09:06+00:00",
+  "source_date": "2026-08-13",
+  "age_days": 2,
+  "product": "cmems_obs-oc_glo_bgc-transp_nrt_l4-gapfree-multi-4km_P1D",
+  "variable": "KD490",
+  "disc_radius_km": 25.0,
+  "sites": {
+    "nine_mile": {
+      "label": "Nine Mile Reef",
+      "kd": 0.08554,
+      "ocean_cells": 77,
+      "l3_observed_fraction": 1.0,
+      "l4_interpolated_fraction": 0.0,
+      "confidence": "ok"
+    },
+    "fidos": {
+      "label": "Fidos",
+      "kd": 0.09196,
+      "ocean_cells": 67,
+      "l3_observed_fraction": 1.0,
+      "l4_interpolated_fraction": 0.0,
+      "confidence": "ok"
+    },
+    "palm_beach": {
+      "label": "Palm Beach Reef",
+      "kd": 0.10946,
+      "ocean_cells": 51,
+      "l3_observed_fraction": 1.0,
+      "l4_interpolated_fraction": 0.0,
+      "confidence": "ok"
+    },
+    "kirra": {
+      "label": "Kirra Reef",
+      "kd": 0.10233,
+      "ocean_cells": 55,
+      "l3_observed_fraction": 1.0,
+      "l4_interpolated_fraction": 0.0,
+      "confidence": "ok"
+    }
+  }
+}
