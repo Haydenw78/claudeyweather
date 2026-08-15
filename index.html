@@ -459,9 +459,9 @@ const REGIONS=[
                     note:'Southern wall. Estuary-connected, so dive the last hour or two of the flood only. What you get in that window is capped by whatever is happening offshore.'},
    {id:'seawaybar', offshoreKm:0.3, vMax:6, vMin:1, name:'Seaway Bar', short:'SWB', lat:-27.93700, lon:153.43700, bar:true, inshore:true, type:'estuarine', dMin:5, dMax:10, shelter:0.7,
                     note:'The entrance. Walls are aligned 15 degrees north of east to cut swell entry, but it still stands up on an ebb.'},
-   {id:'ninemile', offshoreKm:5.8, vMax:25, vMin:3,  name:'Nine Mile', short:'9ML', lat:-28.19460, lon:153.62893, type:'shelf', dMin:10, dMax:24,
+   {id:'ninemile', offshoreKm:5.8, vMax:25, vMin:3,  name:'Nine Mile', short:'9ML', lat:-28.19590, lon:153.62867, type:'shelf', dMin:10, dMax:24,
                     note:'Starts at 24 m on the north-west side and rises to 10 m over the reef. About 5.8 km off Fingal Head.'},
-   {id:'fidos', offshoreKm:1.8, vMax:18, vMin:2, name:'Fidos', short:'FID', lat:-28.19629, lon:153.59131, type:'shelf', dMin:5, dMax:15,
+   {id:'fidos', offshoreKm:1.8, vMax:18, vMin:2, name:'Fidos', short:'FID', lat:-28.19915, lon:153.59147, type:'shelf', dMin:5, dMax:15,
                     note:'About 2.1 km east of Fingal Head and 3.7 km inshore of Nine Mile, on much the same line. Shallower at 5 to 15 m, so it stirs first when swell gets up.'},
    {id:'kingscliff', offshoreKm:1.0, vMax:15, vMin:2,name:'Kingscliff',short:'KGC', lat:-28.25339, lon:153.59053, inshore:true, type:'shelf', dMin:5, dMax:15,
                     note:'Mid-reef mark, about 1 km off the beach and 1 km from the Cudgen Creek entrance. The reef starts roughly 100 m outside the bar and runs offshore, so creek discharge sits on it and runoff matters here in a way it does not at Nine Mile.'},
@@ -2157,20 +2157,7 @@ async function exportConditionsInner(){
 
  const byStation={};
  ref.forEach(r=>{(byStation[r.station]=byStation[r.station]||[]).push(r)});
- let names=Object.keys(byStation);
-
- /* One station at a time, chosen in the Dataset dropdown above. Exporting all
-    four in a run meant the rate limit killed it partway and the next attempt
-    spent its whole allowance redoing the station that already worked. */
- const sel=document.getElementById('calSet');
- const pick=sel&&sel.value&&sel.value.indexOf('ref_')===0?sel.value.slice(4):null;
- if(pick&&byStation[pick])names=[pick];
- else if(pick===null){
-  say('<span class="bad">Pick a station in the <b>Dataset</b> dropdown above first.</span> '
-    +'Exports run one station at a time so a rate limit cannot cost you a finished one. '
-    +'Available: '+names.join(', ')+'.');
-  return;
- }
+ const names=Object.keys(byStation);
  const done=[], failed=[];
 
  for(let si=0;si<names.length;si++){
@@ -2187,11 +2174,12 @@ async function exportConditionsInner(){
   for(let y=y0;y<=y1 && !aborted;y+=CHUNK_Y){
    const a=(y-1)+'-11-01', b=Math.min(y+CHUNK_Y-1,y1)+'-12-31';
    say('<b>'+name+'</b> ('+(si+1)+' of '+names.length+'): pulling '+a.slice(0,4)+' to '+b.slice(0,4)+'…');
-   const w=await settle(getJSON(archCondURL(sp,a,b)));
+   const w=await settle(getJSON(archWindURL(sp,a,b)));
    if(!w.ok){ aborted=(rateLimited?'rate limited':'archive request failed'); break }
    const h=w.value[0].hourly;
    for(let j=0;j<h.time.length;j++){
     idx[h.time[j]]={ws:h.wind_speed_10m[j],wd:h.wind_direction_10m[j],
+      gs:h.wind_gusts_10m?h.wind_gusts_10m[j]:null,
       pr:h.precipitation?h.precipitation[j]:null,
       sw:h.shortwave_radiation?h.shortwave_radiation[j]:null,
       cc:h.cloud_cover?h.cloud_cover[j]:null,
@@ -2212,11 +2200,12 @@ async function exportConditionsInner(){
   recs.forEach(r=>{
    const end=new Date(r.ts);
    const hs=new Date(end); hs.setDate(hs.getDate()-HOURLY_D);
-   const ws=[],wd=[],pr=[],sw=[],cc=[];
+   const ws=[],wd=[],gs=[],pr=[],sw=[],cc=[];
    for(let t=new Date(hs);t<=end;t.setHours(t.getHours()+1)){
     const v=idx[key(t)];
     ws.push(v&&v.ws!=null?Math.round(v.ws):null);
     wd.push(v&&v.wd!=null?Math.round(v.wd):null);
+    gs.push(v&&v.gs!=null?Math.round(v.gs):null);
     pr.push(v&&v.pr!=null?Math.round(v.pr*10)/10:null);
     sw.push(v&&v.sw!=null?Math.round(v.sw):null);
     cc.push(v&&v.cc!=null?Math.round(v.cc):null);
@@ -2248,7 +2237,7 @@ async function exportConditionsInner(){
    }
 
    st.samples.push({ts:r.ts,obs:r.visObservedM,
-     t0:hs.toISOString().slice(0,13)+':00',ws,wd,pr,sw,cc,daily:d});
+     t0:hs.toISOString().slice(0,13)+':00',ws,wd,gs,pr,sw,cc,daily:d});
   });
 
   /* Cross-check before handing anything over. Every sample must trace back to a
@@ -2347,15 +2336,7 @@ function logExport(){
 ======================================================================== */
 const archWindURL=(sp,a,b)=>'https://archive-api.open-meteo.com/v1/archive?'+new URLSearchParams({
  latitude:sp.lat,longitude:sp.lon,start_date:a,end_date:b,
- hourly:'wind_speed_10m,wind_direction_10m,wind_gusts_10m,pressure_msl,precipitation,temperature_2m',
- wind_speed_unit:'kmh',timezone:TZ});
-/* Open-Meteo charges by weight, not by request: roughly variables x days. A
-   17-year pull is expensive however it is chunked, so the conditions export
-   asks for only what it uses. Dropping mslp and gusts is a quarter off the
-   bill, and neither is used downstream. */
-const archCondURL=(sp,a,b)=>'https://archive-api.open-meteo.com/v1/archive?'+new URLSearchParams({
- latitude:sp.lat,longitude:sp.lon,start_date:a,end_date:b,
- hourly:'wind_speed_10m,wind_direction_10m,precipitation,temperature_2m,shortwave_radiation,cloud_cover',
+ hourly:'wind_speed_10m,wind_direction_10m,wind_gusts_10m,pressure_msl,precipitation,temperature_2m,shortwave_radiation,cloud_cover',
  wind_speed_unit:'kmh',timezone:TZ});
 const archMarineVars=(v,model)=>(sp,a,b)=>{
  const q={latitude:sp.lat,longitude:sp.lon,start_date:a,end_date:b,hourly:v.join(','),timezone:TZ};
