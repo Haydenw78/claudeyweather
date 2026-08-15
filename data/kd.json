@@ -1,39 +1,106 @@
 {
-  "generated_utc": "2026-08-15T02:14:01+00:00",
-  "source_date": "2026-08-13",
-  "age_days": 2,
+  "generated_utc": "2026-08-15T20:52:59+00:00",
+  "source_date": "2026-08-14",
+  "age_days": 1,
   "product": "cmems_obs-oc_glo_bgc-transp_nrt_l4-gapfree-multi-4km_P1D",
   "variable": "KD490",
   "disc_radius_km": 25.0,
   "sites": {
-    "nine_mile": {
-      "label": "Nine Mile Reef",
-      "kd": 0.08554,
+    "seawaywall": {
+      "label": "Seaway Wall",
+      "region": "tweed",
+      "kd": 0.0769,
+      "kd_arithmetic": 0.07792,
+      "ocean_cells": 50,
+      "caveat": "land_adjacency",
+      "l3_observed_fraction": 1.0,
+      "l4_interpolated_fraction": 0.0,
+      "confidence": "ok"
+    },
+    "seawaybar": {
+      "label": "Seaway Bar",
+      "region": "tweed",
+      "kd": 0.07562,
+      "kd_arithmetic": 0.07667,
+      "ocean_cells": 55,
+      "caveat": "land_adjacency",
+      "l3_observed_fraction": 1.0,
+      "l4_interpolated_fraction": 0.0,
+      "confidence": "ok"
+    },
+    "ninemile": {
+      "label": "Nine Mile",
+      "region": "tweed",
+      "kd": 0.06089,
+      "kd_arithmetic": 0.06229,
       "ocean_cells": 77,
+      "caveat": "none",
       "l3_observed_fraction": 1.0,
       "l4_interpolated_fraction": 0.0,
       "confidence": "ok"
     },
     "fidos": {
       "label": "Fidos",
-      "kd": 0.09196,
+      "region": "tweed",
+      "kd": 0.06356,
+      "kd_arithmetic": 0.06496,
       "ocean_cells": 67,
+      "caveat": "none",
       "l3_observed_fraction": 1.0,
       "l4_interpolated_fraction": 0.0,
       "confidence": "ok"
     },
-    "palm_beach": {
-      "label": "Palm Beach Reef",
-      "kd": 0.10946,
-      "ocean_cells": 51,
+    "kingscliff": {
+      "label": "Kingscliff",
+      "region": "tweed",
+      "kd": 0.06404,
+      "kd_arithmetic": 0.0657,
+      "ocean_cells": 63,
+      "caveat": "land_adjacency",
       "l3_observed_fraction": 1.0,
       "l4_interpolated_fraction": 0.0,
       "confidence": "ok"
     },
-    "kirra": {
-      "label": "Kirra Reef",
-      "kd": 0.10233,
-      "ocean_cells": 55,
+    "tweedbar": {
+      "label": "Tweed Bar",
+      "region": "tweed",
+      "kd": 0.06545,
+      "kd_arithmetic": 0.06667,
+      "ocean_cells": 61,
+      "caveat": "land_adjacency",
+      "l3_observed_fraction": 1.0,
+      "l4_interpolated_fraction": 0.0,
+      "confidence": "ok"
+    },
+    "flinders": {
+      "label": "Flinders Reef",
+      "region": "moreton",
+      "kd": 0.04754,
+      "kd_arithmetic": 0.04821,
+      "ocean_cells": 97,
+      "caveat": "none",
+      "l3_observed_fraction": 1.0,
+      "l4_interpolated_fraction": 0.0,
+      "confidence": "ok"
+    },
+    "smiths": {
+      "label": "Smiths Rock",
+      "region": "moreton",
+      "kd": 0.04601,
+      "kd_arithmetic": 0.04621,
+      "ocean_cells": 98,
+      "caveat": "none",
+      "l3_observed_fraction": 1.0,
+      "l4_interpolated_fraction": 0.0,
+      "confidence": "ok"
+    },
+    "capemor": {
+      "label": "Cape Moreton",
+      "region": "moreton",
+      "kd": 0.05277,
+      "kd_arithmetic": 0.05598,
+      "ocean_cells": 96,
+      "caveat": "none",
       "l3_observed_fraction": 1.0,
       "l4_interpolated_fraction": 0.0,
       "confidence": "ok"
