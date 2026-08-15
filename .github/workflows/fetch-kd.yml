@@ -1,1 +1,41 @@
+name: Fetch Kd nowcast
 
+on:
+  schedule:
+    # 20:00 UTC = 06:00 Brisbane. Fresh file before anyone checks the app.
+    - cron: "0 20 * * *"
+  workflow_dispatch:        # adds a "Run workflow" button for manual runs
+
+permissions:
+  contents: write           # needed to commit kd.json back to the repo
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install copernicusmarine numpy
+
+      - name: Fetch Kd
+        env:
+          COPERNICUSMARINE_SERVICE_USERNAME: ${{ secrets.CMEMS_USERNAME }}
+          COPERNICUSMARINE_SERVICE_PASSWORD: ${{ secrets.CMEMS_PASSWORD }}
+        run: python fetch_kd.py
+
+      - name: Commit if changed
+        run: |
+          git config user.name "kd-bot"
+          git config user.email "kd-bot@users.noreply.github.com"
+          git add data/kd.json
+          if git diff --staged --quiet; then
+            echo "No change, nothing to commit."
+          else
+            git commit -m "Kd nowcast $(date -u +%Y-%m-%d)"
+            git push
+          fi
