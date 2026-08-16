@@ -3,9 +3,16 @@
 const fs=require('fs'), {JSDOM}=require('jsdom');
 const core=require('./forecast-core.js');
 const dom=new JSDOM(fs.readFileSync('index.html','utf8'),
-  {runScripts:'dangerously',pretendToBeVisual:true,url:'https://example.com/'});
+  {runScripts:'dangerously',pretendToBeVisual:true,resources:'usable',
+   url:'file://'+process.cwd()+'/index.html'});
 setTimeout(()=>{
  const ev=s=>dom.window.eval(s);
+ if(dom.window.eval("typeof ForecastCore")==='undefined'){
+  console.log('FATAL: forecast-core.js did not load.');
+  console.log('  index.html expects <script src="forecast-core.js"> beside it.');
+  console.log('  Check the file exists in this directory and the name matches.');
+  process.exit(1);
+ }
  let n=0,bad=0,worst=0,worstCase=null;
  const rec=(a,b,label,c)=>{const d=Math.abs(a-b); n++; if(d>1e-12){bad++;}
    if(d>worst){worst=d;worstCase=label+' '+JSON.stringify(c);} };

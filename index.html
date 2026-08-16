@@ -431,6 +431,7 @@ details[open] summary::after{content:' −'}
 
 </div>
 
+<script src="forecast-core.js"></script>
 <script>
 "use strict";
 
@@ -725,49 +726,10 @@ function seasonAdj(dt,spot){
  if(spot.lat<-29.5||spot.lat>-25.5)return 0;        // outside the calibrated stretch
  return SEASON_SEQ[dt.getMonth()]||0;
 }
-const VIS_BANDS=[
- {max:28, label:'murky',     col:'#FF4D6D'},
- {max:50, label:'patchy',    col:'#FFA83A'},
- {max:72, label:'good',      col:'#5FC6E8'},
- {max:101,label:'excellent', col:'#5FD97A'}
-];
-const visBand=v=>VIS_BANDS.find(b=>v<b.max)||VIS_BANDS[3];
-
-/* Orbital velocity at the seabed, linear wave theory.
-   Longer period means longer wavelength means the motion reaches deeper, which
-   is why period matters more than height.
-
-   Solves the dispersion relation by Newton on x = kd, where x*tanh(x) = w^2*d/g.
-   The old fixed-point iteration L = L0*tanh(2*pi*d/L) converges far too slowly
-   in shallow water with long-period swell: against an exact solution over
-   H 0.5-3 m, T 4-18 s, d 5-35 m it was 21% out at p90, 95% out at worst
-   (H 1.2, T 18, d 5: 1.67 m/s returned against a true 0.86), and it flipped a
-   resuspension threshold on 2.2% of the grid for coarse beds. Newton reaches
-   machine precision in six passes. */
-function orbitalVel(H,T,d){
- if(!H||!T||T<=0||!d||d<=0)return 0;
- const g=9.81, w=2*Math.PI/T, a=w*w*d/g;
- if(!(a>0))return 0;
- let x=a/Math.sqrt(Math.tanh(a));          // Guo initial guess, valid both limits
- for(let k=0;k<6;k++){
-  const t=Math.tanh(x), f=x*t-a, fp=t+x*(1-t*t);
-  if(Math.abs(fp)<1e-15)break;
-  const step=f/fp;
-  x-=step;
-  if(Math.abs(step)<1e-12)break;
- }
- const sh=Math.sinh(x);
- return sh>1e-6 ? Math.PI*H/(T*sh) : 0;
-}
-/* Critical orbital speed rises with grain size, and what matters just as much
-   is whether there is any fine sediment there to lift. Capricorn reefs are
-   coarse carbonate rubble in oligotrophic water, which is why they stay clear
-   through conditions that would ruin an inshore sand bottom. */
-const BED={
- oceanic:  {uCrit:0.55, supply:0.30},   // coral rubble, coarse carbonate, little fine material
- shelf:    {uCrit:0.35, supply:1.00},   // medium sand, open coast
- estuarine:{uCrit:0.15, supply:1.50}    // fine silt, abundant
-};
+/* Wave physics, bed classes and banding now live in forecast-core.js, which is
+   the single authority for the forecast calculation. Aliased here so the rest
+   of this file reads unchanged. */
+const {orbitalVel, BED, VIS_BANDS, visBand} = ForecastCore;
 
 /* Post-pass over the series: every term needs lookback, so it runs after the
    blocks are built rather than inside the loop. */

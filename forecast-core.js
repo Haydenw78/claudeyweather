@@ -19,6 +19,16 @@
 
 'use strict';
 
+/* Wrapped so nothing leaks into the global lexical scope. Two <script> tags in
+   a browser share one global lexical scope, so a bare top-level `const BED`
+   here collides with the app's own declarations and the app script dies with a
+   redeclaration error. Only ForecastCore is exposed. */
+(function (factory) {
+  const API = factory();
+  if (typeof module !== 'undefined' && module.exports) module.exports = API;
+  if (typeof window !== 'undefined') window.ForecastCore = API;
+})(function () {
+
 /* ---- constants, verbatim ---- */
 
 const BED = {
@@ -217,10 +227,6 @@ function predict(f, spot, W) {
   };
 }
 
-const API = { orbitalVel, bedStir, windMix, rainReach, ceiling, predict,
-              visBand, spotRange, BED, VIS_BANDS, WEIGHTS, ENGINE_VERSION };
-
-/* Dual export: browser attaches to window, Node uses module.exports.
-   Neither path modifies the other. */
-if (typeof module !== 'undefined' && module.exports) module.exports = API;
-if (typeof window !== 'undefined') window.ForecastCore = API;
+return { orbitalVel, bedStir, windMix, rainReach, ceiling, predict,
+         visBand, spotRange, BED, VIS_BANDS, WEIGHTS, ENGINE_VERSION };
+});
