@@ -152,27 +152,46 @@ function ceiling(f, spot, W) {
  * Returns a full component trace, not just a number. A final-value match can
  * hide two errors cancelling, so equivalence is checked stage by stage.
  */
-function predict(f, spot, W) {
+/* ---- the split: environmental state, then application heads ----
+ *
+ * `opticalState` answers "what is the water doing", with no notion of a diver,
+ * a target or a direction. `visibilityHead` converts that into recreational
+ * diver visibility. Other heads can sit alongside it later without the
+ * environmental layer having to change: charter threshold probability, camera
+ * imaging range, sediment plume risk, light at depth.
+ *
+ * The reason for the boundary is that visibility is not one quantity. A
+ * spearfisher looking down through the column, a scuba diver judging a
+ * horizontal target and a camera on an ROV are three different questions off
+ * the same water. Baking one of them into the state makes the others a rewrite.
+ *
+ * `predict` remains as the combined call, so existing callers are unaffected.
+ */
+
+function opticalState(f, spot, W) {
   const w = W || WEIGHTS;
   const type = spot.type || 'shelf';
-  const { vMin, vMax } = spotRange(spot);
 
   const stirLag = Math.min(1.6, f.stirLag || 0);
   const wm = windMix(f.mixKmh, w);
   const reach = rainReach(spot.offshoreKm, type, w);
   const rainTerm = reach * Math.min(w.rainCap, (f.rain72 || 0) * w.rainPerMm);
   const ceil = ceiling(f, spot, w);
+  const est = type !== 'oceanic' && type !== 'shelf';
 
-  let vis, visWhy;
+  /* `clarity` is the branch-resolved 0-100 water clarity of the site, before
+     any question about who is looking at it or how. This is the number a head
+     consumes. */
+  let clarity, driver;
 
   if (type === 'oceanic') {
     // 80 km offshore: clear by default, only swell and settling really bite
-    vis = clamp(w.oceanicBase - w.oceanicStir * stirLag - w.oceanicWind * wm, 0, 100);
-    visWhy = stirLag > 0.7 ? 'swell stirring the bottom'
+    clarity = clamp(w.oceanicBase - w.oceanicStir * stirLag - w.oceanicWind * wm, 0, 100);
+    driver = stirLag > 0.7 ? 'swell stirring the bottom'
       : wm > 0.5 ? 'wind mixing the surface' : 'settled';
   } else if (type === 'shelf') {
-    vis = ceil;
-    visWhy = stirLag > 0.8 ? 'swell stirring the bottom'
+    clarity = ceil;
+    driver = stirLag > 0.8 ? 'swell stirring the bottom'
       : wm > 0.55 ? 'wind mixing the water column'
       : ((f.rain72 || 0) * reach) > 6 ? 'catchment runoff'
       : (f.ekman || 0) > 0.3 ? 'northerly, some upwelling risk'
@@ -181,17 +200,12 @@ function predict(f, spot, W) {
     // estuarine entrance: flood-window gate, then plume return
     const tideQ = f.tideQ != null ? f.tideQ : 0.06;
     const plume = f.plume || 0;
-    vis = clamp(ceil * Math.max(w.estTideFloor, tideQ) * (1 - w.estPlume * plume), 0, 100);
-    visWhy = tideQ < 0.25 ? 'wrong tide state'
+    clarity = clamp(ceil * Math.max(w.estTideFloor, tideQ) * (1 - w.estPlume * plume), 0, 100);
+    driver = tideQ < 0.25 ? 'wrong tide state'
       : plume > 0.3 ? 'northerly pushed the ebb plume back south'
       : ceil < 45 ? 'offshore water is dirty, caps the window'
       : 'flood window on clean water';
   }
-
-  const band = visBand(vis);
-  const visM = vMin + (vMax - vMin) * Math.pow(Math.max(0, vis) / 100, w.metresExp);
-
-  const est = type !== 'oceanic' && type !== 'shelf';
 
   /* Calculation trace. Field names match the exporter schema so observation,
      hindcast and reference exporters can record this verbatim.
@@ -219,14 +233,43 @@ function predict(f, spot, W) {
     tideQ: est ? (f.tideQ != null ? f.tideQ : 0.06) : null,
     plume: est ? (f.plume || 0) : null,
 
+    clarity,
+    driver
+  };
+}
+
+/* Recreational diver visibility. One head among several, not the output.
+ *
+ * NOTE ON SCOPE. This maps clarity to a single horizontal-ish distance in
+ * metres. It has no vertical structure, so it cannot answer the spearfishing
+ * questions (looking down through the column, layer depth, water-column
+ * uniformity) or anything requiring beam attenuation. Those need mixed-layer
+ * depth and stratification, which the model does not yet carry. Do not add
+ * empty heads for them: add the state first. */
+function visibilityHead(state, spot, W) {
+  const w = W || WEIGHTS;
+  const { vMin, vMax } = spotRange(spot);
+  const vis = state.clarity;
+  return {
     visibilityIndex: vis,
-    visibilityMetres: visM,
-    visibilityBand: band.label,
-    reason: visWhy,
+    visibilityMetres: vMin + (vMax - vMin) * Math.pow(Math.max(0, vis) / 100, w.metresExp),
+    visibilityBand: visBand(vis).label,
+    reason: state.driver,
     vMin, vMax
   };
 }
 
-return { orbitalVel, bedStir, windMix, rainReach, ceiling, predict,
+/* Combined call. Unchanged return shape, so existing callers are unaffected. */
+function predict(f, spot, W) {
+  const state = opticalState(f, spot, W);
+  const head = visibilityHead(state, spot, W);
+  const out = Object.assign({}, state, head);
+  delete out.clarity;          // exposed as visibilityIndex by the head
+  delete out.driver;           // exposed as reason by the head
+  return out;
+}
+
+return { orbitalVel, bedStir, windMix, rainReach, ceiling,
+         opticalState, visibilityHead, predict,
          visBand, spotRange, BED, VIS_BANDS, WEIGHTS, ENGINE_VERSION };
 });

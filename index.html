@@ -881,6 +881,13 @@ function computeVis(out,spot,turns,step){
   b.vis=r.visibilityIndex; b.visWhy=r.reason; b.visM=r.visibilityMetres;
   b.visBand=visBand(b.vis);          // the object, since callers read .col
   b.vMax=r.vMax; b.vMin=r.vMin;
+
+  /* Keep the whole calculation trace on the block. The exporter records this
+     verbatim rather than re-deriving anything, so an export cannot drift from
+     the engine that produced it. Before this, stirLag was a local inside the
+     loop and never left the function: exports carried instantaneous ubMs
+     instead, and the largest term in the model could not be fitted at all. */
+  b.trace=r;
  });
 }
 
@@ -1924,6 +1931,38 @@ function storageHealth(){
  const bytes=(store.get('divelog')||'').length;
  return {total:all.length, committed:repoObs.length, unexported:un, bytes};
 }
+/* Engine trace and site metadata for an exported row. One definition, called
+   by all three export paths, because three hand-maintained copies of the same
+   field list is how stirLag went missing from exports in the first place.
+
+   stirLag is the 34-point term and the largest in the model. Without it a
+   calibration corpus cannot fit the thing that matters most, and the Python
+   harness silently fell back to instantaneous ubMs, which is near zero at any
+   station deep enough to have reference casts. Site metadata travels with it
+   because reference backfills hardcoded type 'shelf' and one depth per
+   station. */
+function traceFields(b, spot){
+ const t=b&&b.trace||null, sp=spot||null;
+ const r=v=>v!=null?+v:null;
+ return {
+  engine:t?t.engine:null, branch:t?t.branch:null,
+  siteType:sp?sp.type||null:null,
+  siteDepthMin:sp?sp.dMin!=null?sp.dMin:null:null,
+  siteDepthMax:sp?sp.dMax!=null?sp.dMax:null:null,
+  siteShelter:sp&&sp.shelter!=null?sp.shelter:null,
+  siteOffshoreKm:sp&&sp.offshoreKm!=null?sp.offshoreKm:null,
+  stirLag:t?+t.stirLag.toFixed(4):null,
+  stirLagClamped:t?+t.stirLagClamped.toFixed(4):null,
+  windMix:t?+t.windMix.toFixed(4):null,
+  rainReach:t?+t.rainReach.toFixed(4):null,
+  rainTerm:t?+t.rainTerm.toFixed(3):null,
+  sstAnomClamped:t?+t.sstAnomClamped.toFixed(3):null,
+  seasonAdj:t?+t.seasonAdj.toFixed(3):null,
+  offshoreCeiling:t?+t.offshoreCeiling.toFixed(3):null,
+  tideQ:t&&t.tideQ!=null?+t.tideQ.toFixed(4):null
+ };
+}
+
 function logSnapshot(){
  const b=state.chartSeries[state.cursor], sp=SPOT();
  const prim=b.trains.find(x=>x.label==='Primary');
@@ -1945,6 +1984,8 @@ function logSnapshot(){
   tideM:b.tide!=null?+b.tide.toFixed(2):null, tideDir:b.fDir||null,
   hrsToHigh:b.hrsToHigh!=null?+b.hrsToHigh.toFixed(2):null,
   plume:b.plume!=null?+b.plume.toFixed(3):null,
+
+  ...traceFields(b,sp),
   visPredicted:b.vis!=null?Math.round(b.vis):null, visBand:b.visBand?b.visBand.label:null,
   visPredictedM:b.visM!=null?+b.visM.toFixed(1):null, vMax:b.vMax, vMin:b.vMin,
   visObservedM:null, obsWindKmh:null, obsSeaM:null, forecastRating:null, notes:null
@@ -2437,6 +2478,7 @@ function saveHindcast(){
   tideM:b.tide!=null?+b.tide.toFixed(2):null, tideDir:b.fDir||null,
   hrsToHigh:b.hrsToHigh!=null?+b.hrsToHigh.toFixed(2):null,
   plume:b.plume!=null?+b.plume.toFixed(3):null,
+  ...traceFields(b,SPOT()),
   visPredicted:Math.round(b.vis), visPredictedM:+b.visM.toFixed(1),
   visBand:b.visBand.label, vMax:b.vMax, vMin:b.vMin,
   visObservedM:v, obsWindKmh:null, obsSeaM:null, forecastRating:null,
@@ -2592,6 +2634,7 @@ async function runBulk(){
    tideM:b.tide!=null?+b.tide.toFixed(2):null, tideDir:b.fDir||null,
    hrsToHigh:b.hrsToHigh!=null?+b.hrsToHigh.toFixed(2):null,
    plume:b.plume!=null?+b.plume.toFixed(3):null,
+   ...traceFields(b,SPOT()),
    visPredicted:Math.round(b.vis), visPredictedM:+b.visM.toFixed(1),
    visBand:b.visBand.label, vMax:b.vMax, vMin:b.vMin,
    visObservedM:r.vis, obsWindKmh:null, obsSeaM:null, forecastRating:null, notes:null
