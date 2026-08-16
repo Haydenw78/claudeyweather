@@ -1,0 +1,53 @@
+# Virtual environments and installed packages. Never commit these: hundreds of
+# MB, and they break when moved between machines anyway.
+vis-env/
+copernicus-env/
+*-env/
+venv/
+__pycache__/
+*.pyc
+node_modules/
+package-lock.json
+
+# Bulk source data. Re-downloadable, and too big for a repo.
+imos_*.csv
+sat_all.csv
+matched_cast_predictors.csv
+conditions*.json
+observations-all-stations.json
+boxes/
+chl_parts/
+chl_parts_done/
+currents/
+*.zip
+*.nc
+
+# Generated figures and intermediate analysis output
+*.png
+binned_correlation_curves.csv
+shuffled_null_curves.csv
+spearman_results.csv
+decorrelation_summary.csv
+
+# macOS and iCloud noise
+.DS_Store
+*\ 2.*
+*\ [0-9].*
+.icloud
+
+# Superseded app copies. index.html is the app.
+capricorn-window*.html
+fetch_kd-*.py
+
+# Credentials. Never commit these.
+.copernicusmarine/
+*.env
+credentials*
+
+# --- deliberately NOT ignored, these belong in the repo ---
+# index.html
+# forecast-core.js, node_runner.js, forecast_client.py, golden_check.js
+# fetch_kd.py, rottnest_sectors.py, pull_*.py
+# .github/workflows/
+# data/kd.json, data/kd_history.csv, data/observations.json
+# HANDOVER-4.md, readme.md
