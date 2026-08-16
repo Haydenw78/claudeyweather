@@ -7,7 +7,6 @@ venv/
 __pycache__/
 *.pyc
 node_modules/
-package-lock.json
 
 # Bulk source data. Re-downloadable, and too big for a repo.
 imos_*.csv
