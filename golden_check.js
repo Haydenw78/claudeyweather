@@ -14,8 +14,21 @@ setTimeout(()=>{
   process.exit(1);
  }
  let n=0,bad=0,worst=0,worstCase=null;
- const rec=(a,b,label,c)=>{const d=Math.abs(a-b); n++; if(d>1e-12){bad++;}
-   if(d>worst){worst=d;worstCase=label+' '+JSON.stringify(c);} };
+ /* A missing value must FAIL, not pass. The first version of this used
+    `Math.abs(a-b) > 1e-12`, and NaN > 1e-12 is false, so every comparison
+    against an undefined field counted as agreement. That hid a real field-name
+    mismatch through two clean runs. Compare types first, then values. */
+ const rec=(a,b,label,c)=>{
+   n++;
+   const where=()=>label+' '+JSON.stringify(c);
+   if(typeof a!=='number'||typeof b!=='number'||!Number.isFinite(a)||!Number.isFinite(b)){
+    bad++; if(!worstCase) worstCase='NON-NUMERIC '+where()+' got '+a+' vs '+b;
+    return;
+   }
+   const d=Math.abs(a-b);
+   if(d>1e-12) bad++;
+   if(d>worst){worst=d;worstCase=where();}
+ };
 
  // orbitalVel across the supported domain
  for(const H of [0,0.5,1.2,2,3]) for(const T of [4,8,12,18]) for(const d of [5,10,20,35,200])

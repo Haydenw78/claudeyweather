@@ -837,38 +837,14 @@ function computeVis(out,spot,turns,step){
      15 held-out years. The margin is not statistically decisive on its own
      (t=1.77), but the direction is consistent and gusts driving column mixing
      is the more sensible mechanism. */
-  const mixKmh=(b.gust!=null?b.gust:b.kt);
-  const windMix=Math.min(1,Math.pow(Math.max(0,mixKmh-11)/34,1.15));
-  /* Runoff is a coastal band, not a shelf-wide event. Past a few kilometres you
-     cross the dirty line into clean water, which is why rain shows no effect at
-     all at the 36 km reference station (rho -0.05 across 173 readings). */
-  const offKm=spot.offshoreKm!=null?spot.offshoreKm:(type==='estuarine'?0.5:type==='oceanic'?60:6);
-  const rainReach=Math.exp(-offKm/7);
-  const ceiling=Math.max(0,Math.min(100,
-    76
-    - 34*Math.min(1.6,stirLag)
-    - 22*windMix
-    - 10*b.ekman
-    +  6*Math.max(-2,Math.min(2,b.sstAnom))
-    - rainReach*Math.min(18,b.rain72*0.9)
-    + seasonAdj(b.dt,spot)
-  ));
-
-  if(type==='oceanic'){
-   // 80 km offshore: clear by default, only swell and settling really bite
-   b.vis=Math.max(0,Math.min(100, 94 - 30*Math.min(1.6,stirLag) - 10*windMix));
-   b.visWhy=stirLag>0.7?'swell stirring the bottom':windMix>0.5?'wind mixing the surface':'settled';
-  } else if(type==='shelf'){
-   b.vis=ceiling;
-   b.visWhy=stirLag>0.8?'swell stirring the bottom'
-     :windMix>0.55?'wind mixing the water column'
-     :(b.rain72*rainReach)>6?'catchment runoff'
-     :b.ekman>0.3?'northerly, some upwelling risk'
-     :b.ekman<-0.2?'southerly, clean water in':'settled';
-  } else {
-   // ---- estuarine entrance ----
+  /* ---- feature pipeline: the two estuarine gates ----
+     These need `turns` and hourly lookback, so they are built here rather than
+     in the engine. Everything below this point is engine work and lives in
+     forecast-core.js. */
+  let tideQ, hrsToHigh=null;
+  if(type==='estuarine'){
    // gate 1: only the last couple of hours of the flood are worth diving
-   let tideQ=0.06, hrsToHigh=null;
+   tideQ=0.06;
    const te=turns;
    if(te&&te.turns){
     const nh=te.turns.find(e=>e.kind==='H'&&e.t>=b.dt);
@@ -889,30 +865,22 @@ function computeVis(out,spot,turns,step){
     wP++;
    }
    b.plume=wP?pr/wP:0;
-   b.vis=Math.max(0,Math.min(100, ceiling*Math.max(0.08,tideQ)*(1-0.45*b.plume) ));
-   b.visWhy=tideQ<0.25?'wrong tide state'
-     :b.plume>0.3?'northerly pushed the ebb plume back south'
-     :ceiling<45?'offshore water is dirty, caps the window'
-     :'flood window on clean water';
   }
-  b.visBand=visBand(b.vis);
 
-  /* The index lives high, typically 65-80, because most days have no strong
-     driver against them. Mapped linearly onto a site's worst-to-best range that
-     put every prediction near the top: across 691 reference readings the model
-     over-read by 2.5 to 11.8 m depending on the station.
+  /* ---- engine ----
+     Single authority. The ceiling, the three site-type branches and the
+     index-to-metres curve all live in forecast-core.js so the browser and the
+     Python calibration path cannot diverge. Proven identical across 242,193
+     comparisons; see golden_check.js. */
+  const r=ForecastCore.predict({
+   stirLag, mixKmh:(b.gust!=null?b.gust:b.kt),
+   ekman:b.ekman, sstAnom:b.sstAnom, rain72:b.rain72,
+   season:seasonAdj(b.dt,spot), tideQ, plume:b.plume
+  }, spot);
 
-     A typical day actually sits around 40% of the way from worst to best, not
-     70%. Raising the index to a power puts it there while still letting a
-     genuinely clean day reach the top of the range.
-
-       index  20   40   60   70   80   90  100
-       range   2%  10%  28%  41%  57%  77% 100%
-
-     Mean absolute error across the four reference stations falls from 6.8 m to
-     4.1 m, and the systematic over-read from -6.3 m to -0.4 m. */
-  b.visM=vMin+(vMax-vMin)*Math.pow(Math.max(0,b.vis)/100,2.5);
-  b.vMax=vMax; b.vMin=vMin;
+  b.vis=r.visibilityIndex; b.visWhy=r.reason; b.visM=r.visibilityMetres;
+  b.visBand=visBand(b.vis);          // the object, since callers read .col
+  b.vMax=r.vMax; b.vMin=r.vMin;
  });
 }
 
