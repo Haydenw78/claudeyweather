@@ -435,6 +435,10 @@ details[open] summary::after{content:' −'}
 <script>
 "use strict";
 
+// Spot lat/lon is the plotter mark at the top of the reef, not a centroid;
+// dMin is the sounding taken at that mark. dMax on every spot below is an
+// unverified estimate from the same source as the pre-correction dMin
+// values and has not been confirmed by Hayden.
 const REGIONS=[
  {id:'capricorn', label:'Capricorn Bunker', minWindow:12,
   note:'Multi-day offshore. Windows scored over 12 hours or more, because you are staying at sea.',
@@ -443,7 +447,7 @@ const REGIONS=[
   spots:[
    {id:'sykes', offshoreKm:80, vMax:35, vMin:10,   name:'Sykes',        short:'SYK',  lat:-23.4331,  lon:152.0325,  type:'oceanic', dMin:10, dMax:30, note:'Eastern edge of the group. Most exposed to E and SE. Current runs hard on the springs.'},
    {id:'lamont', offshoreKm:78, vMax:35, vMin:10,  name:'Lamont',       short:'LAM',  lat:-23.6000,  lon:152.0489,  type:'oceanic', dMin:10, dMax:30, note:'South-east corner. Open to southerly swell wrapping up from the Tasman.'},
-   {id:'broom', offshoreKm:72, vMax:35, vMin:10,   name:'Broomfield',   short:'BRO',  lat:-23.2650,  lon:151.9400,  type:'oceanic', dMin:8,  dMax:25, note:'North of Heron. Best lee in a SE. Position is an estimate — check your plotter.'},
+   {id:'broom', offshoreKm:72, vMax:35, vMin:10,   name:'Broomfield',   short:'BRO',  lat:-23.26193, lon:151.51978, type:'oceanic', dMin:4,  dMax:25, note:'North of Heron. Best lee in a SE.'},
    {id:'nwi', offshoreKm:62, vMax:30, vMin:8,     name:'North West Is',short:'NWI',  lat:-23.2983,  lon:151.7075,  type:'oceanic', dMin:8,  dMax:25, note:'Largest cay in the Marine Park. Western side, so it sits in the lee of a SE.'},
    {id:'masthead', offshoreKm:65, vMax:30, vMin:8,name:'Masthead Is',  short:'MHD',  lat:-23.5383,  lon:151.7333,  type:'oceanic', dMin:8,  dMax:25, note:'Elongate platform reef on the western side. Sheltered anchoring on the lee.'},
    {id:'heron', offshoreKm:70, vMax:32, vMin:9,   name:'Heron',        short:'HER',  lat:-23.4425,  lon:151.9139,  type:'oceanic', dMin:10, dMax:25, note:'Reference point. Compare against what the apps are showing you.'},
@@ -460,10 +464,16 @@ const REGIONS=[
                     note:'Southern wall. Estuary-connected, so dive the last hour or two of the flood only. What you get in that window is capped by whatever is happening offshore.'},
    {id:'seawaybar', offshoreKm:0.3, vMax:6, vMin:1, name:'Seaway Bar', short:'SWB', lat:-27.93700, lon:153.43700, bar:true, inshore:true, type:'estuarine', dMin:5, dMax:10, shelter:0.7,
                     note:'The entrance. Walls are aligned 15 degrees north of east to cut swell entry, but it still stands up on an ebb.'},
-   {id:'ninemile', offshoreKm:5.8, vMax:25, vMin:3,  name:'Nine Mile', short:'9ML', lat:-28.19590, lon:153.62867, type:'shelf', dMin:10, dMax:24,
-                    note:'Starts at 24 m on the north-west side and rises to 10 m over the reef. About 5.8 km off Fingal Head.'},
-   {id:'fidos', offshoreKm:1.8, vMax:18, vMin:2, name:'Fidos', short:'FID', lat:-28.19915, lon:153.59147, type:'shelf', dMin:5, dMax:15,
-                    note:'About 2.1 km east of Fingal Head and 3.7 km inshore of Nine Mile, on much the same line. Shallower at 5 to 15 m, so it stirs first when swell gets up.'},
+   // vMax/vMin are Hayden's estimate, matching kingscliff — not yet confirmed. note is a placeholder pending Hayden's description.
+   {id:'palmbeach', offshoreKm:0.7, vMax:15, vMin:2, name:'Palm Beach Reef', short:'PBR', lat:-28.10817, lon:153.47677, inshore:true, type:'shelf', dMin:2, dMax:5,
+                    note:'Placeholder — description pending from Hayden.'},
+   // vMax/vMin are Hayden's estimate, matching kingscliff — not yet confirmed. note is a placeholder pending Hayden's description.
+   {id:'kirra', offshoreKm:0.6, vMax:15, vMin:2, name:'Kirra Reef', short:'KIR', lat:-28.16255, lon:153.53097, inshore:true, type:'shelf', dMin:2, dMax:5,
+                    note:'Placeholder — description pending from Hayden.'},
+   {id:'ninemile', offshoreKm:5.8, vMax:25, vMin:3,  name:'Nine Mile', short:'9ML', lat:-28.19662, lon:153.62868, type:'shelf', dMin:6.2, dMax:24,
+                    note:'Starts at 24 m on the north-west side and rises to 6.2 m over the reef at the mark. About 5.8 km off Fingal Head.'},
+   {id:'fidos', offshoreKm:1.8, vMax:18, vMin:2, name:'Fidos', short:'FID', lat:-28.19807, lon:153.59182, type:'shelf', dMin:2, dMax:15,
+                    note:'About 2.1 km east of Fingal Head and 3.7 km inshore of Nine Mile, on much the same line. Shallower at 2 to 15 m, so it stirs first when swell gets up.'},
    {id:'kingscliff', offshoreKm:1.0, vMax:15, vMin:2,name:'Kingscliff',short:'KGC', lat:-28.25339, lon:153.59053, inshore:true, type:'shelf', dMin:5, dMax:15,
                     note:'Mid-reef mark, about 1 km off the beach and 1 km from the Cudgen Creek entrance. The reef starts roughly 100 m outside the bar and runs offshore, so creek discharge sits on it and runoff matters here in a way it does not at Nine Mile.'},
    {id:'tweedbar', offshoreKm:0.3, vMax:6, vMin:1,  name:'Tweed Bar', short:'TWD', lat:-28.16908, lon:153.55643, bar:true, inshore:true, type:'estuarine', dMin:5, dMax:10, shelter:0.7,
@@ -475,7 +485,7 @@ const REGIONS=[
   defaults:{windGo:22,swellGo:1.2,windNo:42,swellNo:2.5,period:12,periodH:1.5},
   spots:[
    {id:'flinders', offshoreKm:9, vMax:30, vMin:5, name:'Flinders Reef',short:'FLR', lat:-26.9667, lon:153.4833, type:'shelf', dMin:8,  dMax:25, note:'North of Cape Moreton. Pick of the northern reefs, exposed once it gets up. Sits close to where the EAC runs hardest inshore.'},
-   {id:'smiths', offshoreKm:13, vMax:32, vMin:6,   name:'Smiths Rock',  short:'SMR', lat:-26.9800, lon:153.5300, type:'shelf', dMin:18, dMax:35, note:'East of Flinders, deeper and more exposed. Depth protects it from swell stirring. Position is an estimate.'},
+   {id:'smiths', offshoreKm:13, vMax:32, vMin:6,   name:'Smiths Rock',  short:'SMR', lat:-27.00423, lon:153.48497, type:'shelf', dMin:5, dMax:35, note:'East of Flinders, deeper and more exposed. Depth protects it from swell stirring. Position is an estimate.'},
    {id:'capemor', offshoreKm:4, vMax:25, vMin:4,  name:'Cape Moreton', short:'CPM', lat:-27.0330, lon:153.4670, type:'shelf', dMin:10, dMax:25, note:'The corner. Useful reference for the top of the island.'}
   ]}
 ];

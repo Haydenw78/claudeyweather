@@ -1,11 +1,38 @@
 """
-Python port of the visibility engine's ceiling formula.
+RETIRED. Do not import this module. It is kept in place, unimported, only so
+its drift from the canonical engine stays readable rather than disappearing
+with a deletion.
 
-Kept deliberately in lock-step with the JS in capricorn-window.html so the two
-cannot drift. Only the terms that can be fitted from an exported observation
-file live here; the lag windows that build ekman, stirLag and rain72 upstream
-need raw hourly history and are not refittable from a point-in-time export.
+Originally: "Python port of the visibility engine's ceiling formula, kept
+deliberately in lock-step with the JS ... so the two cannot drift." It did
+not stay in lock-step. Against forecast-core.js (the actual canonical engine,
+audited 2026-08-18):
+
+  - wind_mix(): windOn=8 here vs canonical 11, and this divides by
+    (windFull-windOn)=26 where canonical divides by a fixed windDen=34 -
+    a different curve shape, not just different constants.
+  - ceiling(): no rainReach distance-decay multiplier on the rain term at
+    all, so the rain penalty here is always full-strength regardless of a
+    spot's offshoreKm.
+  - ceiling(): no oceanic or estuarine branch - only ever computes the
+    shelf-shaped formula, unconditionally, for every record.
+  - to_metres(): linear, where canonical raises the index to a calibrated
+    power (2.5) before mapping onto the site's metre range.
+  - The stirLag fallback here (min(1.6, ubMs/0.35)) silently substitutes a
+    degenerate proxy when stirLag is absent, which was every row this was
+    ever run against.
+
+Use forecast_client.py instead, which calls forecast-core.js itself via
+node_runner.js and cannot drift from the shipped app by construction.
 """
+raise ImportError(
+    "calibration/engine_retired_do_not_import.py is retired and must not be "
+    "imported. It reimplemented the ceiling formula and drifted from "
+    "forecast-core.js (see this file's module docstring for specifics). "
+    "Use forecast_client.ForecastEngine instead - it calls forecast-core.js "
+    "directly via node_runner.js."
+)
+
 import math
 
 DEFAULTS = dict(

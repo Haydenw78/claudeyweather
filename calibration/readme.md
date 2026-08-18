@@ -3,6 +3,13 @@
 Fits and tests the visibility engine offline, so the web app only has to be
 rebuilt once a change has actually earned its place.
 
+`data.json` here is a copy of `observations-all-stations.json`. That file is
+the app's reference store, and which records are in it is decided by which
+weather backfills happened to succeed, not by any sampling design: Port
+Hacking has zero records, Yongala is missing 2017, Maria Island is missing
+2024, and every station stops short of 2026. It is a display cache, not an
+analytical corpus. Anything fitted on `data.json` inherits that selection.
+
 ## Data included
 
 | file | what it is |

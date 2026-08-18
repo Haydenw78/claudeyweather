@@ -1,4 +1,10 @@
-"""Change one thing at a time."""
+"""Change one thing at a time.
+
+Historical exploration, kept for reference only. The 42h/sd26 Ekman centre
+used as the baseline below is a stale pre-revision value, not what shipped -
+production settled on 72h/sd38 (see index.html's computeVis comment), which
+is not one of the variants tried here either.
+"""
 import json, math, statistics, collections
 from stats import spearman
 d=json.load(open('conditions.json'))
@@ -38,10 +44,10 @@ def cmp(name,f,base):
     print(f"  {name:44s} {statistics.mean(B[y] for y in ys):+.3f}  {m:+.3f}  t={m/se:+5.2f}  {sum(1 for v in dif if v>0)}/{len(dif)}")
     return B
 
-cur=lambda x: 76 - 22*mix(gustnow(x)) - 10*gek(x,42,26,6,84)
-base=loyo(cur)
+stale_pre_revision=lambda x: 76 - 22*mix(gustnow(x)) - 10*gek(x,42,26,6,84)
+base=loyo(stale_pre_revision)
 print(f"  {'variant':44s} {'score':>6}  {'diff':>6}\n")
-print(f"  {'current: gust now, ekman 42 h':44s} {statistics.mean(base.values()):+.3f}")
+print(f"  {'baseline (stale pre-revision): gust now, ekman 42 h':44s} {statistics.mean(base.values()):+.3f}")
 print()
 cmp("speed: 6 h mean instead of gust",      lambda x: 76-22*mix(msp(x,6))   -10*gek(x,42,26,6,84), base)
 cmp("speed: 12 h mean",                     lambda x: 76-22*mix(msp(x,12))  -10*gek(x,42,26,6,84), base)

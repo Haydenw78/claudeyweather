@@ -1,6 +1,10 @@
 """
-Compare the current lag structure against the one the data points at,
-held out by year with climatology learned on training years only.
+Historical comparison, kept for reference only: the pre-revision Ekman lag
+(centred 42 h) against one candidate considered when the window was widened
+(centred 108 h), held out by year with climatology learned on training years
+only. Neither of these is what shipped - production settled on 72 h as the
+compromise (see index.html's computeVis comment). Superseded by the "Lag
+structure" section of the calibration readme.
 """
 import json, math, statistics, collections
 from stats import spearman
@@ -27,14 +31,18 @@ def mean_spd(x,h):
 def mix(k,on=11,full=34,e=1.15):
     return min(1.0,(max(0.0,k-on)/full)**e)
 
-def current(x):
-    # gust at the reading, ekman centred 42 h
+def stale_pre_revision(x):
+    # Ekman centred 42 h, sd 26 - a stale pre-revision value, kept only for
+    # this historical comparison. Not what shipped: production is 72 h (see
+    # module docstring).
     g=[q for q in x['gs'][-1:] if q is not None]
     gust=g[0] if g else mean_spd(x,1)
     return 76 - 22*mix(gust) - 10*gauss_ekman(x,42,26,6,84)
 
-def revised(x):
-    # mean speed over the last 6 h, ekman centred 108 h
+def candidate_108h(x):
+    # mean speed over the last 6 h, ekman centred 108 h, sd 44 - one
+    # candidate tried when the window was widened. Also not what shipped;
+    # production settled on 72 h as the compromise (see module docstring).
     return 76 - 22*mix(mean_spd(x,6)) - 16*gauss_ekman(x,108,44,12,200)
 
 def med(a):
@@ -53,14 +61,14 @@ def loyo(f):
         if r==r: out[y]=r
     return out
 
-A,B=loyo(current),loyo(revised)
+A,B=loyo(stale_pre_revision),loyo(candidate_108h)
 ys=sorted(set(A)&set(B))
 print("Held-out year, de-seasonalised Spearman\n")
-print("  year   current   revised    diff")
+print("  year   pre-rev(42h)  candidate(108h)  diff")
 for y in ys: print(f"  {y}    {A[y]:+.3f}    {B[y]:+.3f}   {B[y]-A[y]:+.3f}")
 diff=[B[y]-A[y] for y in ys]
 m=statistics.mean(diff); se=statistics.stdev(diff)/math.sqrt(len(diff))
-print(f"\n  current mean {statistics.mean(A[y] for y in ys):+.3f}")
-print(f"  revised mean {statistics.mean(B[y] for y in ys):+.3f}")
+print(f"\n  pre-revision(42h) mean {statistics.mean(A[y] for y in ys):+.3f}")
+print(f"  candidate(108h) mean {statistics.mean(B[y] for y in ys):+.3f}")
 print(f"  difference   {m:+.3f}  se {se:.3f}  t={m/se:.2f}  better in {sum(1 for v in diff if v>0)}/{len(diff)} years")
 print(f"  {'SIGNIFICANT' if abs(m/se)>2.13 else 'not significant'} at 95%, {len(diff)-1} df")

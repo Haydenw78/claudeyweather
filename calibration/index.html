@@ -431,9 +431,14 @@ details[open] summary::after{content:' −'}
 
 </div>
 
+<script src="../forecast-core.js"></script>
 <script>
 "use strict";
 
+// Spot lat/lon is the plotter mark at the top of the reef, not a centroid;
+// dMin is the sounding taken at that mark. dMax on every spot below is an
+// unverified estimate from the same source as the pre-correction dMin
+// values and has not been confirmed by Hayden.
 const REGIONS=[
  {id:'capricorn', label:'Capricorn Bunker', minWindow:12,
   note:'Multi-day offshore. Windows scored over 12 hours or more, because you are staying at sea.',
@@ -442,7 +447,7 @@ const REGIONS=[
   spots:[
    {id:'sykes', offshoreKm:80, vMax:35, vMin:10,   name:'Sykes',        short:'SYK',  lat:-23.4331,  lon:152.0325,  type:'oceanic', dMin:10, dMax:30, note:'Eastern edge of the group. Most exposed to E and SE. Current runs hard on the springs.'},
    {id:'lamont', offshoreKm:78, vMax:35, vMin:10,  name:'Lamont',       short:'LAM',  lat:-23.6000,  lon:152.0489,  type:'oceanic', dMin:10, dMax:30, note:'South-east corner. Open to southerly swell wrapping up from the Tasman.'},
-   {id:'broom', offshoreKm:72, vMax:35, vMin:10,   name:'Broomfield',   short:'BRO',  lat:-23.2650,  lon:151.9400,  type:'oceanic', dMin:8,  dMax:25, note:'North of Heron. Best lee in a SE. Position is an estimate — check your plotter.'},
+   {id:'broom', offshoreKm:72, vMax:35, vMin:10,   name:'Broomfield',   short:'BRO',  lat:-23.26193, lon:151.51978, type:'oceanic', dMin:4,  dMax:25, note:'North of Heron. Best lee in a SE.'},
    {id:'nwi', offshoreKm:62, vMax:30, vMin:8,     name:'North West Is',short:'NWI',  lat:-23.2983,  lon:151.7075,  type:'oceanic', dMin:8,  dMax:25, note:'Largest cay in the Marine Park. Western side, so it sits in the lee of a SE.'},
    {id:'masthead', offshoreKm:65, vMax:30, vMin:8,name:'Masthead Is',  short:'MHD',  lat:-23.5383,  lon:151.7333,  type:'oceanic', dMin:8,  dMax:25, note:'Elongate platform reef on the western side. Sheltered anchoring on the lee.'},
    {id:'heron', offshoreKm:70, vMax:32, vMin:9,   name:'Heron',        short:'HER',  lat:-23.4425,  lon:151.9139,  type:'oceanic', dMin:10, dMax:25, note:'Reference point. Compare against what the apps are showing you.'},
@@ -459,10 +464,16 @@ const REGIONS=[
                     note:'Southern wall. Estuary-connected, so dive the last hour or two of the flood only. What you get in that window is capped by whatever is happening offshore.'},
    {id:'seawaybar', offshoreKm:0.3, vMax:6, vMin:1, name:'Seaway Bar', short:'SWB', lat:-27.93700, lon:153.43700, bar:true, inshore:true, type:'estuarine', dMin:5, dMax:10, shelter:0.7,
                     note:'The entrance. Walls are aligned 15 degrees north of east to cut swell entry, but it still stands up on an ebb.'},
-   {id:'ninemile', offshoreKm:5.8, vMax:25, vMin:3,  name:'Nine Mile', short:'9ML', lat:-28.19460, lon:153.62893, type:'shelf', dMin:10, dMax:24,
-                    note:'Starts at 24 m on the north-west side and rises to 10 m over the reef. About 5.8 km off Fingal Head.'},
-   {id:'fidos', offshoreKm:1.8, vMax:18, vMin:2, name:'Fidos', short:'FID', lat:-28.19629, lon:153.59131, type:'shelf', dMin:5, dMax:15,
-                    note:'About 2.1 km east of Fingal Head and 3.7 km inshore of Nine Mile, on much the same line. Shallower at 5 to 15 m, so it stirs first when swell gets up.'},
+   // vMax/vMin are Hayden's estimate, matching kingscliff — not yet confirmed. note is a placeholder pending Hayden's description.
+   {id:'palmbeach', offshoreKm:0.7, vMax:15, vMin:2, name:'Palm Beach Reef', short:'PBR', lat:-28.10817, lon:153.47677, inshore:true, type:'shelf', dMin:2, dMax:5,
+                    note:'Placeholder — description pending from Hayden.'},
+   // vMax/vMin are Hayden's estimate, matching kingscliff — not yet confirmed. note is a placeholder pending Hayden's description.
+   {id:'kirra', offshoreKm:0.6, vMax:15, vMin:2, name:'Kirra Reef', short:'KIR', lat:-28.16255, lon:153.53097, inshore:true, type:'shelf', dMin:2, dMax:5,
+                    note:'Placeholder — description pending from Hayden.'},
+   {id:'ninemile', offshoreKm:5.8, vMax:25, vMin:3,  name:'Nine Mile', short:'9ML', lat:-28.19662, lon:153.62868, type:'shelf', dMin:6.2, dMax:24,
+                    note:'Starts at 24 m on the north-west side and rises to 6.2 m over the reef at the mark. About 5.8 km off Fingal Head.'},
+   {id:'fidos', offshoreKm:1.8, vMax:18, vMin:2, name:'Fidos', short:'FID', lat:-28.19807, lon:153.59182, type:'shelf', dMin:2, dMax:15,
+                    note:'About 2.1 km east of Fingal Head and 3.7 km inshore of Nine Mile, on much the same line. Shallower at 2 to 15 m, so it stirs first when swell gets up.'},
    {id:'kingscliff', offshoreKm:1.0, vMax:15, vMin:2,name:'Kingscliff',short:'KGC', lat:-28.25339, lon:153.59053, inshore:true, type:'shelf', dMin:5, dMax:15,
                     note:'Mid-reef mark, about 1 km off the beach and 1 km from the Cudgen Creek entrance. The reef starts roughly 100 m outside the bar and runs offshore, so creek discharge sits on it and runoff matters here in a way it does not at Nine Mile.'},
    {id:'tweedbar', offshoreKm:0.3, vMax:6, vMin:1,  name:'Tweed Bar', short:'TWD', lat:-28.16908, lon:153.55643, bar:true, inshore:true, type:'estuarine', dMin:5, dMax:10, shelter:0.7,
@@ -474,7 +485,7 @@ const REGIONS=[
   defaults:{windGo:22,swellGo:1.2,windNo:42,swellNo:2.5,period:12,periodH:1.5},
   spots:[
    {id:'flinders', offshoreKm:9, vMax:30, vMin:5, name:'Flinders Reef',short:'FLR', lat:-26.9667, lon:153.4833, type:'shelf', dMin:8,  dMax:25, note:'North of Cape Moreton. Pick of the northern reefs, exposed once it gets up. Sits close to where the EAC runs hardest inshore.'},
-   {id:'smiths', offshoreKm:13, vMax:32, vMin:6,   name:'Smiths Rock',  short:'SMR', lat:-26.9800, lon:153.5300, type:'shelf', dMin:18, dMax:35, note:'East of Flinders, deeper and more exposed. Depth protects it from swell stirring. Position is an estimate.'},
+   {id:'smiths', offshoreKm:13, vMax:32, vMin:6,   name:'Smiths Rock',  short:'SMR', lat:-27.00423, lon:153.48497, type:'shelf', dMin:5, dMax:35, note:'East of Flinders, deeper and more exposed. Depth protects it from swell stirring. Position is an estimate.'},
    {id:'capemor', offshoreKm:4, vMax:25, vMin:4,  name:'Cape Moreton', short:'CPM', lat:-27.0330, lon:153.4670, type:'shelf', dMin:10, dMax:25, note:'The corner. Useful reference for the top of the island.'}
   ]}
 ];
@@ -717,34 +728,10 @@ function seasonAdj(dt,spot){
  if(spot.lat<-29.5||spot.lat>-25.5)return 0;        // outside the calibrated stretch
  return SEASON_SEQ[dt.getMonth()]||0;
 }
-const VIS_BANDS=[
- {max:28, label:'murky',     col:'#FF4D6D'},
- {max:50, label:'patchy',    col:'#FFA83A'},
- {max:72, label:'good',      col:'#5FC6E8'},
- {max:101,label:'excellent', col:'#5FD97A'}
-];
-const visBand=v=>VIS_BANDS.find(b=>v<b.max)||VIS_BANDS[3];
-
-/* Orbital velocity at the seabed, linear wave theory.
-   Longer period means longer wavelength means the motion reaches deeper, which
-   is why period matters more than height. Solved iteratively for wavelength. */
-function orbitalVel(H,T,d){
- if(!H||!T||T<=0||!d||d<=0)return 0;
- const g=9.81, L0=g*T*T/(2*Math.PI);
- let L=L0;
- for(let k=0;k<10;k++)L=L0*Math.tanh(2*Math.PI*d/L);
- const sh=Math.sinh(2*Math.PI*d/L);
- return sh>1e-6 ? Math.PI*H/(T*sh) : 0;
-}
-/* Critical orbital speed rises with grain size, and what matters just as much
-   is whether there is any fine sediment there to lift. Capricorn reefs are
-   coarse carbonate rubble in oligotrophic water, which is why they stay clear
-   through conditions that would ruin an inshore sand bottom. */
-const BED={
- oceanic:  {uCrit:0.55, supply:0.30},   // coral rubble, coarse carbonate, little fine material
- shelf:    {uCrit:0.35, supply:1.00},   // medium sand, open coast
- estuarine:{uCrit:0.15, supply:1.50}    // fine silt, abundant
-};
+/* Wave physics, bed classes and banding now live in forecast-core.js, which is
+   the single authority for the forecast calculation. Aliased here so the rest
+   of this file reads unchanged. */
+const {orbitalVel, BED, VIS_BANDS, visBand} = ForecastCore;
 
 /* Post-pass over the series: every term needs lookback, so it runs after the
    blocks are built rather than inside the loop. */
@@ -852,38 +839,14 @@ function computeVis(out,spot,turns,step){
      15 held-out years. The margin is not statistically decisive on its own
      (t=1.77), but the direction is consistent and gusts driving column mixing
      is the more sensible mechanism. */
-  const mixKmh=(b.gust!=null?b.gust:b.kt);
-  const windMix=Math.min(1,Math.pow(Math.max(0,mixKmh-11)/34,1.15));
-  /* Runoff is a coastal band, not a shelf-wide event. Past a few kilometres you
-     cross the dirty line into clean water, which is why rain shows no effect at
-     all at the 36 km reference station (rho -0.05 across 173 readings). */
-  const offKm=spot.offshoreKm!=null?spot.offshoreKm:(type==='estuarine'?0.5:type==='oceanic'?60:6);
-  const rainReach=Math.exp(-offKm/7);
-  const ceiling=Math.max(0,Math.min(100,
-    76
-    - 34*Math.min(1.6,stirLag)
-    - 22*windMix
-    - 10*b.ekman
-    +  6*Math.max(-2,Math.min(2,b.sstAnom))
-    - rainReach*Math.min(18,b.rain72*0.9)
-    + seasonAdj(b.dt,spot)
-  ));
-
-  if(type==='oceanic'){
-   // 80 km offshore: clear by default, only swell and settling really bite
-   b.vis=Math.max(0,Math.min(100, 94 - 30*Math.min(1.6,stirLag) - 10*windMix));
-   b.visWhy=stirLag>0.7?'swell stirring the bottom':windMix>0.5?'wind mixing the surface':'settled';
-  } else if(type==='shelf'){
-   b.vis=ceiling;
-   b.visWhy=stirLag>0.8?'swell stirring the bottom'
-     :windMix>0.55?'wind mixing the water column'
-     :(b.rain72*rainReach)>6?'catchment runoff'
-     :b.ekman>0.3?'northerly, some upwelling risk'
-     :b.ekman<-0.2?'southerly, clean water in':'settled';
-  } else {
-   // ---- estuarine entrance ----
+  /* ---- feature pipeline: the two estuarine gates ----
+     These need `turns` and hourly lookback, so they are built here rather than
+     in the engine. Everything below this point is engine work and lives in
+     forecast-core.js. */
+  let tideQ, hrsToHigh=null;
+  if(type==='estuarine'){
    // gate 1: only the last couple of hours of the flood are worth diving
-   let tideQ=0.06, hrsToHigh=null;
+   tideQ=0.06;
    const te=turns;
    if(te&&te.turns){
     const nh=te.turns.find(e=>e.kind==='H'&&e.t>=b.dt);
@@ -904,30 +867,27 @@ function computeVis(out,spot,turns,step){
     wP++;
    }
    b.plume=wP?pr/wP:0;
-   b.vis=Math.max(0,Math.min(100, ceiling*Math.max(0.08,tideQ)*(1-0.45*b.plume) ));
-   b.visWhy=tideQ<0.25?'wrong tide state'
-     :b.plume>0.3?'northerly pushed the ebb plume back south'
-     :ceiling<45?'offshore water is dirty, caps the window'
-     :'flood window on clean water';
   }
-  b.visBand=visBand(b.vis);
 
-  /* The index lives high, typically 65-80, because most days have no strong
-     driver against them. Mapped linearly onto a site's worst-to-best range that
-     put every prediction near the top: across 691 reference readings the model
-     over-read by 2.5 to 11.8 m depending on the station.
+  /* ---- engine ----
+     Single authority. The ceiling, the three site-type branches and the
+     index-to-metres curve all live in forecast-core.js so the browser and the
+     Python calibration path cannot diverge. Proven identical across 242,193
+     comparisons; see golden_check.js. */
+  const r=ForecastCore.predict({
+   stirLag, mixKmh:(b.gust!=null?b.gust:b.kt),
+   ekman:b.ekman, sstAnom:b.sstAnom, rain72:b.rain72,
+   season:seasonAdj(b.dt,spot), tideQ, plume:b.plume
+  }, spot);
 
-     A typical day actually sits around 40% of the way from worst to best, not
-     70%. Raising the index to a power puts it there while still letting a
-     genuinely clean day reach the top of the range.
+  b.vis=r.visibilityIndex; b.visWhy=r.reason; b.visM=r.visibilityMetres;
+  b.visBand=visBand(b.vis);          // the object, since callers read .col
+  b.vMax=r.vMax; b.vMin=r.vMin;
 
-       index  20   40   60   70   80   90  100
-       range   2%  10%  28%  41%  57%  77% 100%
-
-     Mean absolute error across the four reference stations falls from 6.8 m to
-     4.1 m, and the systematic over-read from -6.3 m to -0.4 m. */
-  b.visM=vMin+(vMax-vMin)*Math.pow(Math.max(0,b.vis)/100,2.5);
-  b.vMax=vMax; b.vMin=vMin;
+  /* Keep the whole calculation trace on the block. The exporter records this
+     verbatim rather than re-deriving anything, so an export cannot drift from
+     the engine that produced it. */
+  b.trace=r;
  });
 }
 
