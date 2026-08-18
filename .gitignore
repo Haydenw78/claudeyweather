@@ -59,3 +59,12 @@ credentials*
 # .github/workflows/
 # data/kd.json, data/kd_history.csv, data/observations.json
 # HANDOVER-4.md, readme.md
+
+# Newer virtual environments
+.venv*/
+
+# Bulk pulled data, all reproducible from the scripts
+data/qld-waves/
+data/qld-waves-smoke/
+data/qld-nrt/
+data/freedive-gc/

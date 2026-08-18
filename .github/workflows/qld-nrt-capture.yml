@@ -1,0 +1,63 @@
+name: Queensland near-real-time wave/current capture
+
+# The source retains roughly seven days and updates hourly, so a missed
+# capture window can mean permanent loss of that station-hour. Twice a day
+# at non-peak minutes balances that against not hammering a public
+# datastore endpoint that has been WAF-rate-limited before (see
+# qld_wave_archive.py's request_bytes backoff).
+on:
+  schedule:
+    - cron: "17 3 * * *"   # 13:17 AEST
+    - cron: "43 15 * * *"  # 01:43 AEST
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: qld-nrt-capture
+  cancel-in-progress: false
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install test dependencies
+        run: pip install pytest
+
+      - name: Run tests
+        run: python3 -m pytest tests/test_qld_nrt_capture.py -v
+
+      - name: Capture
+        id: capture
+        run: |
+          if python3 qld_nrt_capture.py --output data/qld-nrt; then
+            echo "status=ok" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=failed" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+      - name: Report failure clearly
+        if: failure()
+        run: |
+          echo "::error::Queensland near-real-time capture or QC failed. See the 'Run tests' and 'Capture' step logs above for the CaptureError message and the latest QC snapshot at data/qld-nrt/qc/latest.json (if it was written before the failure)."
+          exit 1
+
+      - name: Commit if new or revised observations exist
+        run: |
+          git config user.name "qld-nrt-bot"
+          git config user.email "qld-nrt-bot@users.noreply.github.com"
+          git add data/qld-nrt
+          if git diff --staged --quiet; then
+            echo "No new or revised observations, nothing to commit."
+          else
+            git commit -m "Queensland NRT capture $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            git push
+          fi
