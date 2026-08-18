@@ -1,0 +1,11 @@
+# Test runner
+pytest==9.1.1
+
+# Copernicus Marine pulls: fetch_kd.py, pull_freedive_glorys.py,
+# capture_freedive_glorys_forecast.py
+copernicusmarine==2.4.1
+xarray==2026.7.0
+numpy==2.5.2
+pandas==3.0.5
+
+# qld_wave_archive.py and qld_nrt_capture.py use the standard library only.

@@ -40,7 +40,6 @@ fetch_kd-*.py
 
 # Captured wave data. Queensland feed is CC BY 4.0 but Tweed Offshore is
 # CC BY-ND 4.0 - observations accumulate in the private repo, not here.
-data/qld-nrt/
 data/qld-waves/
 data/qld-waves-smoke/
 
@@ -66,5 +65,4 @@ credentials*
 # Bulk pulled data, all reproducible from the scripts
 data/qld-waves/
 data/qld-waves-smoke/
-data/qld-nrt/
 data/freedive-gc/

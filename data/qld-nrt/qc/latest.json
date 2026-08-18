@@ -1,0 +1,94 @@
+{
+  "duplicate_row_count": 0,
+  "earliest_timestamp_aest": "2026-08-11T00:00:00",
+  "latest_timestamp_aest": "2026-08-18 12:20:00",
+  "licence_as_shown": "CC BY 4.0",
+  "local_stations": {
+    "Bilinga": {
+      "rows": 359,
+      "valid_current_rows": 357
+    },
+    "Gold Coast Mk4": {
+      "rows": 360,
+      "valid_current_rows": 360
+    },
+    "Palm Beach Mk4": {
+      "rows": 360,
+      "valid_current_rows": 360
+    },
+    "Tweed Heads Mk4": {
+      "rows": 360,
+      "valid_current_rows": 360
+    },
+    "Tweed Offshore": {
+      "rows": 360,
+      "valid_current_rows": 360
+    }
+  },
+  "missing_columns": [],
+  "resource_id": "2bbef99e-9974-49b9-a316-57402b00609c",
+  "resource_page": "https://www.data.qld.gov.au/dataset/coastal-data-system-near-real-time-wave-data/resource/2bbef99e-9974-49b9-a316-57402b00609c",
+  "retrieved_at_utc": "2026-08-18T03:56:00Z",
+  "revised_row_count": 0,
+  "rows_by_station": {
+    "Abbot Point TriAxys": 324,
+    "Albatross Bay": 352,
+    "Amrun": 149,
+    "Amrun Offshore": 239,
+    "Bilinga": 359,
+    "Brisbane Mk4": 360,
+    "Bundaberg": 358,
+    "Cairns Mk4": 360,
+    "Caloundra": 270,
+    "Emu Park": 356,
+    "Gladstone": 359,
+    "Gold Coast Mk4": 360,
+    "Hay Point TriAxys": 541,
+    "Hervey Bay": 273,
+    "Mackay Harbour (east of southern breakwater)": 541,
+    "Mackay Mk4": 360,
+    "Mooloolaba": 355,
+    "North Moreton Bay": 272,
+    "One Tree Island (Offshore Gladstone)": 267,
+    "Palm Beach Mk4": 360,
+    "Skardon River Offshore": 250,
+    "Skardon River Outer": 359,
+    "Townsville": 359,
+    "Tweed Heads Mk4": 360,
+    "Tweed Offshore": 360,
+    "Wide Bay": 357
+  },
+  "source_bytes": 1119238,
+  "source_sha256": "43365b8a2e8c17ccd70c11fd19cc0d9fc29aeecbe11c98b0659d1c9e01ca1fef",
+  "source_url": "https://www.data.qld.gov.au/datastore/dump/2bbef99e-9974-49b9-a316-57402b00609c?bom=true",
+  "total_rows": 8860,
+  "unexpected_columns": [],
+  "valid_current_rows_by_station": {
+    "Abbot Point TriAxys": 0,
+    "Albatross Bay": 0,
+    "Amrun": 149,
+    "Amrun Offshore": 239,
+    "Bilinga": 357,
+    "Brisbane Mk4": 360,
+    "Bundaberg": 0,
+    "Cairns Mk4": 360,
+    "Caloundra": 0,
+    "Emu Park": 0,
+    "Gladstone": 0,
+    "Gold Coast Mk4": 360,
+    "Hay Point TriAxys": 0,
+    "Hervey Bay": 231,
+    "Mackay Harbour (east of southern breakwater)": 0,
+    "Mackay Mk4": 359,
+    "Mooloolaba": 0,
+    "North Moreton Bay": 0,
+    "One Tree Island (Offshore Gladstone)": 0,
+    "Palm Beach Mk4": 360,
+    "Skardon River Offshore": 250,
+    "Skardon River Outer": 359,
+    "Townsville": 0,
+    "Tweed Heads Mk4": 360,
+    "Tweed Offshore": 360,
+    "Wide Bay": 0
+  }
+}
