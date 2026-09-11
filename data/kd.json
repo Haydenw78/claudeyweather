@@ -1,6 +1,6 @@
 {
-  "generated_utc": "2026-09-10T22:21:43+00:00",
-  "source_date": "2026-09-09",
+  "generated_utc": "2026-09-11T22:21:18+00:00",
+  "source_date": "2026-09-10",
   "age_days": 1,
   "product": "cmems_obs-oc_glo_bgc-transp_nrt_l4-gapfree-multi-4km_P1D",
   "variable": "KD490",
@@ -9,101 +9,101 @@
     "seawaywall": {
       "label": "Seaway Wall",
       "region": "tweed",
-      "kd": 0.0571,
-      "kd_arithmetic": 0.05795,
+      "kd": 0.04793,
+      "kd_arithmetic": 0.04806,
       "ocean_cells": 50,
       "caveat": "land_adjacency",
-      "l3_observed_fraction": 1.0,
-      "l4_interpolated_fraction": 0.0,
-      "confidence": "ok"
+      "l3_observed_fraction": 0.72,
+      "l4_interpolated_fraction": 0.28,
+      "confidence": "flagged"
     },
     "seawaybar": {
       "label": "Seaway Bar",
       "region": "tweed",
-      "kd": 0.0562,
-      "kd_arithmetic": 0.05705,
+      "kd": 0.04765,
+      "kd_arithmetic": 0.04778,
       "ocean_cells": 55,
       "caveat": "land_adjacency",
-      "l3_observed_fraction": 1.0,
-      "l4_interpolated_fraction": 0.0,
-      "confidence": "ok"
+      "l3_observed_fraction": 0.673,
+      "l4_interpolated_fraction": 0.327,
+      "confidence": "flagged"
     },
     "ninemile": {
       "label": "Nine Mile",
       "region": "tweed",
-      "kd": 0.04507,
-      "kd_arithmetic": 0.04536,
+      "kd": 0.04173,
+      "kd_arithmetic": 0.04178,
       "ocean_cells": 77,
       "caveat": "none",
-      "l3_observed_fraction": 1.0,
-      "l4_interpolated_fraction": 0.0,
-      "confidence": "ok"
+      "l3_observed_fraction": 0.39,
+      "l4_interpolated_fraction": 0.61,
+      "confidence": "low_confidence"
     },
     "fidos": {
       "label": "Fidos",
       "region": "tweed",
-      "kd": 0.04605,
-      "kd_arithmetic": 0.04659,
+      "kd": 0.04218,
+      "kd_arithmetic": 0.04223,
       "ocean_cells": 67,
       "caveat": "none",
-      "l3_observed_fraction": 1.0,
-      "l4_interpolated_fraction": 0.0,
-      "confidence": "ok"
+      "l3_observed_fraction": 0.403,
+      "l4_interpolated_fraction": 0.597,
+      "confidence": "low_confidence"
     },
     "kingscliff": {
       "label": "Kingscliff",
       "region": "tweed",
-      "kd": 0.04582,
-      "kd_arithmetic": 0.04638,
+      "kd": 0.04174,
+      "kd_arithmetic": 0.04177,
       "ocean_cells": 63,
       "caveat": "land_adjacency",
-      "l3_observed_fraction": 1.0,
-      "l4_interpolated_fraction": 0.0,
-      "confidence": "ok"
+      "l3_observed_fraction": 0.413,
+      "l4_interpolated_fraction": 0.587,
+      "confidence": "low_confidence"
     },
     "tweedbar": {
       "label": "Tweed Bar",
       "region": "tweed",
-      "kd": 0.04747,
-      "kd_arithmetic": 0.04822,
+      "kd": 0.04279,
+      "kd_arithmetic": 0.04285,
       "ocean_cells": 61,
       "caveat": "land_adjacency",
-      "l3_observed_fraction": 1.0,
-      "l4_interpolated_fraction": 0.0,
-      "confidence": "ok"
+      "l3_observed_fraction": 0.443,
+      "l4_interpolated_fraction": 0.557,
+      "confidence": "low_confidence"
     },
     "flinders": {
       "label": "Flinders Reef",
       "region": "moreton",
-      "kd": 0.05657,
-      "kd_arithmetic": 0.05911,
+      "kd": 0.05376,
+      "kd_arithmetic": 0.05554,
       "ocean_cells": 97,
       "caveat": "none",
-      "l3_observed_fraction": 1.0,
-      "l4_interpolated_fraction": 0.0,
-      "confidence": "ok"
+      "l3_observed_fraction": 0.113,
+      "l4_interpolated_fraction": 0.887,
+      "confidence": "weak_prior"
     },
     "smiths": {
       "label": "Smiths Rock",
       "region": "moreton",
-      "kd": 0.05403,
-      "kd_arithmetic": 0.05636,
+      "kd": 0.05141,
+      "kd_arithmetic": 0.05305,
       "ocean_cells": 98,
       "caveat": "none",
-      "l3_observed_fraction": 1.0,
-      "l4_interpolated_fraction": 0.0,
-      "confidence": "ok"
+      "l3_observed_fraction": 0.102,
+      "l4_interpolated_fraction": 0.898,
+      "confidence": "weak_prior"
     },
     "capemor": {
       "label": "Cape Moreton",
       "region": "moreton",
-      "kd": 0.06246,
-      "kd_arithmetic": 0.06569,
+      "kd": 0.05876,
+      "kd_arithmetic": 0.0611,
       "ocean_cells": 96,
       "caveat": "none",
-      "l3_observed_fraction": 1.0,
-      "l4_interpolated_fraction": 0.0,
-      "confidence": "ok"
+      "l3_observed_fraction": 0.115,
+      "l4_interpolated_fraction": 0.885,
+      "confidence": "weak_prior"
     }
   }
 }
