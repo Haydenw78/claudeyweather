@@ -1,6 +1,6 @@
 {
-  "generated_utc": "2026-10-09T23:53:36+00:00",
-  "source_date": "2026-10-08",
+  "generated_utc": "2026-10-10T23:20:49+00:00",
+  "source_date": "2026-10-09",
   "age_days": 1,
   "product": "cmems_obs-oc_glo_bgc-transp_nrt_l4-gapfree-multi-4km_P1D",
   "variable": "KD490",
@@ -9,8 +9,8 @@
     "seawaywall": {
       "label": "Seaway Wall",
       "region": "tweed",
-      "kd": 0.05164,
-      "kd_arithmetic": 0.05208,
+      "kd": 0.0675,
+      "kd_arithmetic": 0.06929,
       "ocean_cells": 50,
       "caveat": "land_adjacency",
       "l3_observed_fraction": 1.0,
@@ -20,8 +20,8 @@
     "seawaybar": {
       "label": "Seaway Bar",
       "region": "tweed",
-      "kd": 0.05103,
-      "kd_arithmetic": 0.05147,
+      "kd": 0.06607,
+      "kd_arithmetic": 0.06786,
       "ocean_cells": 55,
       "caveat": "land_adjacency",
       "l3_observed_fraction": 1.0,
@@ -31,79 +31,79 @@
     "ninemile": {
       "label": "Nine Mile",
       "region": "tweed",
-      "kd": 0.04266,
-      "kd_arithmetic": 0.04279,
+      "kd": 0.05384,
+      "kd_arithmetic": 0.05525,
       "ocean_cells": 77,
       "caveat": "none",
-      "l3_observed_fraction": 0.714,
-      "l4_interpolated_fraction": 0.286,
-      "confidence": "flagged"
+      "l3_observed_fraction": 1.0,
+      "l4_interpolated_fraction": 0.0,
+      "confidence": "ok"
     },
     "fidos": {
       "label": "Fidos",
       "region": "tweed",
-      "kd": 0.04328,
-      "kd_arithmetic": 0.04339,
+      "kd": 0.05624,
+      "kd_arithmetic": 0.05765,
       "ocean_cells": 67,
       "caveat": "none",
-      "l3_observed_fraction": 0.776,
-      "l4_interpolated_fraction": 0.224,
+      "l3_observed_fraction": 1.0,
+      "l4_interpolated_fraction": 0.0,
       "confidence": "ok"
     },
     "kingscliff": {
       "label": "Kingscliff",
       "region": "tweed",
-      "kd": 0.04364,
-      "kd_arithmetic": 0.0438,
+      "kd": 0.05686,
+      "kd_arithmetic": 0.05824,
       "ocean_cells": 63,
       "caveat": "land_adjacency",
-      "l3_observed_fraction": 0.667,
-      "l4_interpolated_fraction": 0.333,
-      "confidence": "flagged"
+      "l3_observed_fraction": 1.0,
+      "l4_interpolated_fraction": 0.0,
+      "confidence": "ok"
     },
     "tweedbar": {
       "label": "Tweed Bar",
       "region": "tweed",
-      "kd": 0.04384,
-      "kd_arithmetic": 0.04395,
+      "kd": 0.058,
+      "kd_arithmetic": 0.05935,
       "ocean_cells": 61,
       "caveat": "land_adjacency",
-      "l3_observed_fraction": 0.918,
-      "l4_interpolated_fraction": 0.082,
+      "l3_observed_fraction": 1.0,
+      "l4_interpolated_fraction": 0.0,
       "confidence": "ok"
     },
     "flinders": {
       "label": "Flinders Reef",
       "region": "moreton",
-      "kd": 0.04363,
-      "kd_arithmetic": 0.04445,
+      "kd": 0.04408,
+      "kd_arithmetic": 0.04507,
       "ocean_cells": 97,
       "caveat": "none",
-      "l3_observed_fraction": 0.309,
-      "l4_interpolated_fraction": 0.691,
-      "confidence": "low_confidence"
+      "l3_observed_fraction": 1.0,
+      "l4_interpolated_fraction": 0.0,
+      "confidence": "ok"
     },
     "smiths": {
       "label": "Smiths Rock",
       "region": "moreton",
-      "kd": 0.04152,
-      "kd_arithmetic": 0.04214,
+      "kd": 0.04176,
+      "kd_arithmetic": 0.04239,
       "ocean_cells": 98,
       "caveat": "none",
-      "l3_observed_fraction": 0.378,
-      "l4_interpolated_fraction": 0.622,
-      "confidence": "low_confidence"
+      "l3_observed_fraction": 1.0,
+      "l4_interpolated_fraction": 0.0,
+      "confidence": "ok"
     },
     "capemor": {
       "label": "Cape Moreton",
       "region": "moreton",
-      "kd": 0.04794,
-      "kd_arithmetic": 0.04946,
+      "kd": 0.04881,
+      "kd_arithmetic": 0.05117,
       "ocean_cells": 96,
       "caveat": "none",
-      "l3_observed_fraction": 0.406,
-      "l4_interpolated_fraction": 0.594,
-      "confidence": "low_confidence"
+      "l3_observed_fraction": 1.0,
+      "l4_interpolated_fraction": 0.0,
+      "confidence": "ok"
     }
   }
 }
