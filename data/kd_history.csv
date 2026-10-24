@@ -38798,3 +38798,12 @@ source_date,site,region,kd,kd_arithmetic,ocean_cells,l3_observed_fraction,l4_int
 2026-10-22,flinders,moreton,0.04223,0.04309,97,0.0,1.0,weak_prior,none,nrt,2026-10-23T22:57:57+00:00,1
 2026-10-22,smiths,moreton,0.04017,0.04078,98,0.0,1.0,weak_prior,none,nrt,2026-10-23T22:57:57+00:00,1
 2026-10-22,capemor,moreton,0.04681,0.04939,96,0.0,1.0,weak_prior,none,nrt,2026-10-23T22:57:57+00:00,1
+2026-10-23,seawaywall,tweed,0.03809,0.03813,50,0.0,1.0,weak_prior,land_adjacency,nrt,2026-10-24T22:18:38+00:00,1
+2026-10-23,seawaybar,tweed,0.03792,0.03796,55,0.0,1.0,weak_prior,land_adjacency,nrt,2026-10-24T22:18:38+00:00,1
+2026-10-23,ninemile,tweed,0.03511,0.03512,77,0.0,1.0,weak_prior,none,nrt,2026-10-24T22:18:38+00:00,1
+2026-10-23,fidos,tweed,0.0353,0.03533,67,0.0,1.0,weak_prior,none,nrt,2026-10-24T22:18:38+00:00,1
+2026-10-23,kingscliff,tweed,0.03496,0.03498,63,0.0,1.0,weak_prior,land_adjacency,nrt,2026-10-24T22:18:38+00:00,1
+2026-10-23,tweedbar,tweed,0.03567,0.0357,61,0.0,1.0,weak_prior,land_adjacency,nrt,2026-10-24T22:18:38+00:00,1
+2026-10-23,flinders,moreton,0.04282,0.04373,97,0.0,1.0,weak_prior,none,nrt,2026-10-24T22:18:38+00:00,1
+2026-10-23,smiths,moreton,0.04072,0.04137,98,0.0,1.0,weak_prior,none,nrt,2026-10-24T22:18:38+00:00,1
+2026-10-23,capemor,moreton,0.04762,0.05029,96,0.021,0.979,weak_prior,none,nrt,2026-10-24T22:18:38+00:00,1
